@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Probability Painter: The Chromatic Detective</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #game-board {
+            flex: 2;
+            height: 100vh;
+            background-color: white;
+        }
+        
+        .sidebar {
+            flex: 1;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: white;
+            overflow-y: auto;
+        }
+        
+        .color-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 5px;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+        
+        .color-btn.selected {
+            border-color: white;
+        }
+        
+        .probability-display {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #34495e;
+            border-radius: 5px;
+        }
+        
+        #message-box {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #34495e;
+            border-radius: 5px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="game-board"></div>
+        <div class="sidebar">
+            <h2>Level: <span id="level">1</span></h2>
+            <h3>Score: <span id="score">0</span></h3>
+            
+            <div id="colors-container">
+                <h3>Select Color:</h3>
+                <div style="display: flex; flex-wrap: wrap;">
+                    <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
+                    <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
+                    <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
+                    <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
+                </div>
+            </div>
+            
+            <div id="probabilities-container">
+                <h3>Probabilities:</h3>
+            </div>
+            
+            <div id="message-box"></div>
+            
+            <button id="check-solution">Check Solution</button>
+            <button id="next-level">Next Level</button>
+            <button id="restart-game">Restart Game</button>
+        </div>
+    </div>
+
+<script>
+class ProbabilityPainter {
+    constructor() {
+        this.colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+        this.currentLevel = 1;
+        this.score = 0;
+        this.selectedColor = null;
+        this.probabilities = {};
+        this.cy = null;
+        this.initializeGame();
+    }
+
+    initializeGame() {
+        this.cy = cytoscape({
+            container: document.getElementById('game-board'),
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': '#bdc3c7',
+                        'label': 'data(id)',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'width': '60px',
+                        'height': '60px',
+                        'font-size': '20px'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#95a5a6'
+                    }
+                }
+            ]
+        });
+
+        this.setupEventListeners();
+        this.generateLevel(this.currentLevel);
+    }
+
+    setupEventListeners() {
+        // Color selection
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                this.selectedColor = e.target.dataset.color;
+            });
+        });
+
+        // Node coloring
+        this.cy.on('tap', 'node', (evt) => {
+            if (this.selectedColor) {
+                const node = evt.target;
+                node.style('background-color', this.getColorHex(this.selectedColor));
+                this.updateProbability(node.id());
+            }
+        });
+
+        // Button listeners
+        document.getElementById('check-solution').addEventListener('click', () => this.checkSolution());
+        document.getElementById('next-level').addEventListener('click', () => this.nextLevel());
+        document.getElementById('restart-game').addEventListener('click', () => this.restartGame());
+    }
+
+    generateLevel(level) {
+        this.cy.elements().remove();
+        const numNodes = level + 2;
+
+        // Create nodes
+        for (let i = 0; i < numNodes; i++) {
+            this.cy.add({
+                group: 'nodes',
+                data: { id: i.toString() },
+                position: {
+                    x: 300 + 200 * Math.cos(2 * Math.PI * i / numNodes),
+                    y: 300 + 200 * Math.sin(2 * Math.PI * i / numNodes)
+                }
+            });
+            this.probabilities[i] = Math.round(Math.random() * 100) / 100;
+        }
+
+        // Create edges
+        for (let i = 0; i < numNodes; i++) {
+            for (let j = i + 1; j < numNodes; j++) {
+                if (Math.random() < 0.6) {
+                    this.cy.add({
+                        group: 'edges',
+                        data: { id: `${i}-${j}`, source: i.toString(), target: j.toString() }
+                    });
+                }
+            }
+        }
+
+        this.updateProbabilityDisplay();
+        this.displayMessage(`Level ${level}: Color the vertices so no adjacent vertices share the same color!`);
+    }
+
+    updateProbability(nodeId) {
+        const evidence = Math.random() < 0.5;
+        const prior = this.probabilities[nodeId];
+        const likelihood = evidence ? 0.8 : 0.2;
+        const marginal = prior * likelihood + (1 - prior) * (1 - likelihood);
+        this.probabilities[nodeId] = Math.round((prior * likelihood / marginal) * 100) / 100;
+        this.updateProbabilityDisplay();
+    }
+
+    updateProbabilityDisplay() {
+        const container = document.getElementById('probabilities-container');
+        container.innerHTML = '<h3>Probabilities:</h3>';
+        Object.entries(this.probabilities).forEach(([node, prob]) => {
+            const div = document.createElement('div');
+            div.className = 'probability-display';
+            div.textContent = `Node ${node}: ${prob.toFixed(2)}`;
+            container.appendChild(div);
+        });
+    }
+
+    checkSolution() {
+        let valid = true;
+        this.cy.edges().forEach(edge => {
+            const sourceColor = edge.source().style('background-color');
+            const targetColor = edge.target().style('background-color');
+            if (sourceColor === targetColor) {
+                valid = false;
+            }
+        });
+
+        if (valid) {
+            this.score += 100 * this.currentLevel;
+            document.getElementById('score').textContent = this.score;
+            this.displayMessage('Correct! Click "Next Level" to continue.');
+        } else {
+            this.displayMessage('Invalid solution. Adjacent nodes share the same color.');
+        }
+    }
+
+    nextLevel() {
+        this.currentLevel++;
+        document.getElementById('level').textContent = this.currentLevel;
+        this.generateLevel(this.currentLevel);
+    }
+
+    restartGame() {
+        this.currentLevel = 1;
+        this.score = 0;
+        document.getElementById('level').textContent = this.currentLevel;
+        document.getElementById('score').textContent = this.score;
+        this.generateLevel(this.currentLevel);
+    }
+
+    displayMessage(message) {
+        document.getElementById('message-box').textContent = message;
+    }
+
+    getColorHex(colorName) {
+        const colorMap = {
+            'red': '#e74c3c',
+            'blue': '#3498db',
+            'green': '#2ecc71',
+            'yellow': '#f1c40f'
+        };
+        return colorMap[colorName];
+    }
+}
+
+// Start the game when the page loads
+window.addEventListener('load', () => {
+    new ProbabilityPainter();
+});
+</script>
+</body>
+</html>
