@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Venn Diagram Coloring Game</title>
-    <!-- Required libraries -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
         }
         
         .container {
@@ -21,45 +20,62 @@
         
         .game-area {
             flex: 2;
+            display: flex;
+            flex-direction: column;
+            background-color: #2c3e50;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        .view-container {
+            flex: 1;
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 20px;
             position: relative;
-            background-color: white;
         }
         
         #venn-container {
             width: 100%;
             height: 100%;
-            position: absolute;
         }
         
         #graph-container {
             width: 100%;
             height: 100%;
-            position: absolute;
-            display: none;
         }
         
         .sidebar {
-            flex: 1;
+            width: 300px;
             padding: 20px;
             background-color: #2c3e50;
-            color: white;
-            min-width: 300px;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+        }
+        
+        .objective-panel {
+            background-color: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
         
         .color-selection {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 20px;
         }
         
         .color-row {
             display: flex;
             align-items: center;
-            padding: 10px;
+            padding: 12px;
             background-color: #34495e;
-            border-radius: 5px;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        
+        .color-row:hover {
+            transform: translateX(5px);
         }
         
         .color-btn {
@@ -69,39 +85,36 @@
             margin-right: 15px;
             cursor: pointer;
             border: 3px solid transparent;
-            transition: transform 0.2s;
-        }
-        
-        .color-btn:hover {
-            transform: scale(1.1);
+            transition: all 0.3s;
         }
         
         .color-btn.selected {
             border-color: white;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
         }
         
         .area-bar-container {
             flex-grow: 1;
-            background-color: #2c3e50;
-            border-radius: 3px;
-            position: relative;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 4px;
             height: 20px;
+            position: relative;
+            overflow: hidden;
         }
         
         .area-bar {
             height: 100%;
             width: 0%;
-            border-radius: 3px;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease;
         }
         
         .area-value {
             position: absolute;
-            right: -50px;
-            top: 0;
-            color: white;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
             font-weight: bold;
+            text-shadow: 0 0 4px rgba(0,0,0,0.5);
         }
         
         button {
@@ -109,56 +122,87 @@
             padding: 12px;
             margin: 8px 0;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             background-color: #3498db;
             color: white;
             cursor: pointer;
             font-size: 16px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
         
         button:hover {
             background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         
-        .probabilities {
+        .region-info {
             margin-top: 20px;
             background-color: #34495e;
             padding: 15px;
-            border-radius: 5px;
-            display: none;
+            border-radius: 8px;
         }
         
-        .prob-item {
+        .region-item {
             display: flex;
             justify-content: space-between;
             padding: 8px;
             margin: 5px 0;
-            background-color: #2c3e50;
-            border-radius: 3px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 4px;
         }
-
-        .venn-circle {
-            opacity: 0.5;
+        
+        .venn-region {
             stroke: white;
             stroke-width: 2;
+            transition: fill 0.3s;
         }
-
-        .venn-label {
-            font-size: 14px;
-            fill: white;
+        
+        .region-label {
+            font-size: 16px;
             font-weight: bold;
+            fill: white;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="game-area">
-            <div id="venn-container"></div>
-            <div id="graph-container"></div>
+            <div class="view-container">
+                <div id="venn-container"></div>
+            </div>
+            <div class="view-container">
+                <div id="graph-container"></div>
+            </div>
         </div>
         <div class="sidebar">
-            <h2>Color Selection & Areas</h2>
+            <div class="objective-panel">
+                <h3>Objective</h3>
+                <p>Maximize areas in this order:</p>
+                <ol>
+                    <li>RED (first priority)</li>
+                    <li>BLUE (second priority)</li>
+                    <li>GREEN (third priority)</li>
+                    <li>YELLOW (last priority)</li>
+                </ol>
+            </div>
+            
             <div class="color-selection">
                 <div class="color-row">
                     <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
@@ -190,15 +234,17 @@
                 </div>
             </div>
             
-            <button id="toggle-view">Switch View</button>
-            <button id="show-probs">Show Probabilities</button>
             <button id="check-solution">Check Solution</button>
-            <button id="solve">Show Solution</button>
-            <button id="reset">New Puzzle</button>
+            <button id="show-solution">Show Solution</button>
+            <button id="new-puzzle">New Puzzle</button>
             
-            <div class="probabilities" id="prob-list"></div>
+            <div class="region-info" id="region-list">
+                <h3>Region Areas</h3>
+                <!-- Region areas will be listed here -->
+            </div>
         </div>
     </div>
+    <div class="tooltip"></div>
     <script src="venn.js"></script>
 </body>
 </html>
