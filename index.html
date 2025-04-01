@@ -8,243 +8,188 @@
     <style>
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a1a;
-            color: white;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: white;
         }
-        
+
         .container {
-            display: flex;
-            height: 100vh;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        
-        .game-area {
-            flex: 2;
+
+        .visualizations {
             display: flex;
             flex-direction: column;
-            background-color: #2c3e50;
-            padding: 20px;
             gap: 20px;
         }
-        
-        .view-container {
-            flex: 1;
-            background-color: #34495e;
-            border-radius: 10px;
-            padding: 20px;
-            position: relative;
-        }
-        
+
         #venn-container {
-            width: 100%;
-            height: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            background-color: white;
         }
-        
+
         #graph-container {
-            width: 100%;
-            height: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            background-color: white;
         }
-        
-        .sidebar {
-            width: 300px;
+
+        .controls {
             padding: 20px;
-            background-color: #2c3e50;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
         }
-        
-        .objective-panel {
-            background-color: #34495e;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
+
         .color-selection {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        
+
         .color-row {
             display: flex;
             align-items: center;
-            padding: 12px;
-            background-color: #34495e;
-            border-radius: 8px;
-            transition: transform 0.2s;
+            gap: 10px;
         }
-        
-        .color-row:hover {
-            transform: translateX(5px);
-        }
-        
+
         .color-btn {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            margin-right: 15px;
+            border: 2px solid #333;
             cursor: pointer;
-            border: 3px solid transparent;
-            transition: all 0.3s;
         }
-        
+
         .color-btn.selected {
-            border-color: white;
-            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+            border: 3px solid black;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
         }
-        
-        .area-bar-container {
+
+        .percentage-bar {
             flex-grow: 1;
-            background-color: rgba(0,0,0,0.2);
-            border-radius: 4px;
             height: 20px;
+            background-color: #eee;
+            border: 1px solid #ccc;
             position: relative;
-            overflow: hidden;
         }
-        
-        .area-bar {
+
+        .percentage-fill {
             height: 100%;
             width: 0%;
-            transition: width 0.5s ease;
+            transition: width 0.3s;
         }
-        
-        .area-value {
+
+        .percentage-text {
             position: absolute;
-            right: 10px;
+            right: -40px;
             top: 50%;
             transform: translateY(-50%);
-            font-weight: bold;
-            text-shadow: 0 0 4px rgba(0,0,0,0.5);
         }
-        
-        button {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 8px;
-            background-color: #3498db;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-        
-        button:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        
-        .region-info {
+
+        .region-probabilities {
+            font-family: monospace;
             margin-top: 20px;
-            background-color: #34495e;
-            padding: 15px;
-            border-radius: 8px;
         }
-        
+
         .region-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
             margin: 5px 0;
-            background-color: rgba(0,0,0,0.2);
-            border-radius: 4px;
         }
-        
-        .venn-region {
-            stroke: white;
-            stroke-width: 2;
-            transition: fill 0.3s;
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
         }
-        
-        .region-label {
-            font-size: 16px;
-            font-weight: bold;
-            fill: white;
-            text-anchor: middle;
-            dominant-baseline: middle;
-        }
-        
-        .tooltip {
-            position: absolute;
-            background-color: rgba(0,0,0,0.8);
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
+
+        button {
+            padding: 10px;
+            border: 1px solid #333;
+            background-color: white;
+            cursor: pointer;
             font-size: 14px;
-            pointer-events: none;
+        }
+
+        button:hover {
+            background-color: #eee;
+        }
+
+        .objective {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 10px;
             display: none;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="game-area">
-            <div class="view-container">
-                <div id="venn-container"></div>
-            </div>
-            <div class="view-container">
-                <div id="graph-container"></div>
-            </div>
+        <div class="visualizations">
+            <div id="venn-container"></div>
+            <div id="graph-container"></div>
         </div>
-        <div class="sidebar">
-            <div class="objective-panel">
-                <h3>Objective</h3>
-                <p>Maximize areas in this order:</p>
-                <ol>
-                    <li>RED (first priority)</li>
-                    <li>BLUE (second priority)</li>
-                    <li>GREEN (third priority)</li>
-                    <li>YELLOW (last priority)</li>
-                </ol>
-            </div>
-            
+        
+        <div class="controls">
             <div class="color-selection">
                 <div class="color-row">
                     <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
-                    <div class="area-bar-container">
-                        <div class="area-bar" id="red-total" style="background-color: #e74c3c;"></div>
-                        <span class="area-value">0%</span>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" id="red-fill" style="background-color: #e74c3c;"></div>
+                        <span class="percentage-text" id="red-percentage">0%</span>
                     </div>
                 </div>
                 <div class="color-row">
                     <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
-                    <div class="area-bar-container">
-                        <div class="area-bar" id="blue-total" style="background-color: #3498db;"></div>
-                        <span class="area-value">0%</span>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" id="blue-fill" style="background-color: #3498db;"></div>
+                        <span class="percentage-text" id="blue-percentage">0%</span>
                     </div>
                 </div>
                 <div class="color-row">
                     <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
-                    <div class="area-bar-container">
-                        <div class="area-bar" id="green-total" style="background-color: #2ecc71;"></div>
-                        <span class="area-value">0%</span>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" id="green-fill" style="background-color: #2ecc71;"></div>
+                        <span class="percentage-text" id="green-percentage">0%</span>
                     </div>
                 </div>
                 <div class="color-row">
                     <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
-                    <div class="area-bar-container">
-                        <div class="area-bar" id="yellow-total" style="background-color: #f1c40f;"></div>
-                        <span class="area-value">0%</span>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" id="yellow-fill" style="background-color: #f1c40f;"></div>
+                        <span class="percentage-text" id="yellow-percentage">0%</span>
                     </div>
                 </div>
             </div>
-            
-            <button id="check-solution">Check Solution</button>
-            <button id="show-solution">Show Solution</button>
-            <button id="new-puzzle">New Puzzle</button>
-            
-            <div class="region-info" id="region-list">
-                <h3>Region Areas</h3>
-                <!-- Region areas will be listed here -->
+
+            <div class="buttons">
+                <button id="check">Check</button>
+                <button id="help">Help</button>
+                <button id="solve">Solve</button>
+                <button id="restart">Restart</button>
             </div>
         </div>
+
+        <div class="region-info">
+            <div class="region-probabilities" id="region-list"></div>
+            <div class="objective">
+                Maximize the probability of red, then blue, then green, then yellow such that no two colors are adjacent
+            </div>
+            <div class="message" id="message"></div>
+        </div>
     </div>
-    <div class="tooltip"></div>
     <script src="venn.js"></script>
 </body>
 </html>
