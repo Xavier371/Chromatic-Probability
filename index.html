@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Probability Painter: The Chromatic Detective</title>
+    <title>Venn Diagram Coloring Game</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="venn.js"></script>
     <style>
         body {
             margin: 0;
@@ -15,19 +16,21 @@
         .container {
             display: flex;
             height: 100vh;
+        }
+        
+        .game-area {
+            flex: 2;
             position: relative;
-        }
-        
-        #game-board {
-            flex: 2;
-            height: 100vh;
             background-color: white;
         }
         
-        #partition-view {
-            flex: 2;
-            height: 100vh;
-            background-color: white;
+        #venn-view, #graph-view {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+        
+        #graph-view {
             display: none;
         }
         
@@ -36,26 +39,7 @@
             padding: 20px;
             background-color: #2c3e50;
             color: white;
-            overflow-y: auto;
             min-width: 300px;
-        }
-        
-        .view-toggle {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            padding: 10px 20px;
-            background-color: #2c3e50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        .view-toggle:hover {
-            background-color: #34495e;
         }
         
         .color-btn {
@@ -71,147 +55,85 @@
             border-color: white;
         }
         
-        .color-info {
-            display: flex;
-            align-items: center;
-            margin: 15px 0;
+        .area-totals {
+            margin: 20px 0;
             padding: 10px;
             background-color: #34495e;
             border-radius: 5px;
         }
         
-        .color-probability {
-            margin-left: 10px;
-            width: 60px;
-            padding: 5px;
-            border: none;
-            border-radius: 3px;
-        }
-        
-        .event-name {
-            margin-left: 10px;
-            color: white;
-            flex: 1;
-        }
-        
-        .probability-display {
-            margin: 10px 0;
-            padding: 15px;
-            background-color: #34495e;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .probability-bar {
+        .area-bar {
             height: 20px;
+            margin: 5px 0;
             background-color: #3498db;
             border-radius: 3px;
             transition: width 0.3s ease;
         }
         
-        #message-box {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #34495e;
-            border-radius: 5px;
-            min-height: 60px;
-        }
-        
         button {
-            padding: 12px 24px;
-            margin: 5px;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
             border: none;
             border-radius: 5px;
             background-color: #3498db;
             color: white;
             cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s ease;
+            font-size: 16px;
         }
         
         button:hover {
             background-color: #2980b9;
         }
         
-        .stats-container {
-            background-color: #34495e;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .stats-container h2, .stats-container h3 {
-            margin: 5px 0;
-        }
-        
-        .tooltip {
-            position: absolute;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 12px;
-            pointer-events: none;
+        .probabilities {
+            margin-top: 20px;
             display: none;
         }
         
-        .help-text {
-            font-size: 12px;
-            color: #bdc3c7;
-            margin-top: 5px;
+        .prob-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            background-color: #34495e;
+            margin: 5px 0;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <button class="view-toggle" id="toggle-view">Switch View</button>
-        <div id="game-board"></div>
-        <div id="partition-view"></div>
+        <div class="game-area">
+            <div id="venn-view"></div>
+            <div id="graph-view"></div>
+        </div>
         <div class="sidebar">
-            <div class="stats-container">
-                <h2>Level: <span id="level">1</span></h2>
-                <h3>Score: <span id="score">0</span></h3>
+            <h2>Color Selection</h2>
+            <div class="color-selection">
+                <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
+                <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
+                <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
+                <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
             </div>
             
-            <div id="colors-container">
-                <h3>Events and Their Probabilities:</h3>
-                <div class="help-text">Adjust probabilities (0-1) for each event</div>
-                <div id="color-probabilities">
-                    <div class="color-info">
-                        <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
-                        <input type="number" class="color-probability" min="0" max="1" step="0.1" value="0.3">
-                        <span class="event-name">Event A</span>
-                    </div>
-                    <div class="color-info">
-                        <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
-                        <input type="number" class="color-probability" min="0" max="1" step="0.1" value="0.4">
-                        <span class="event-name">Event B</span>
-                    </div>
-                    <div class="color-info">
-                        <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
-                        <input type="number" class="color-probability" min="0" max="1" step="0.1" value="0.2">
-                        <span class="event-name">Event C</span>
-                    </div>
-                    <div class="color-info">
-                        <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
-                        <input type="number" class="color-probability" min="0" max="1" step="0.1" value="0.1">
-                        <span class="event-name">Event D</span>
-                    </div>
-                </div>
+            <div class="area-totals">
+                <h3>Area Totals</h3>
+                <div id="red-total" class="area-bar"></div>
+                <div id="blue-total" class="area-bar"></div>
+                <div id="green-total" class="area-bar"></div>
+                <div id="yellow-total" class="area-bar"></div>
             </div>
             
-            <div id="probabilities-container">
-                <h3>Region Probabilities:</h3>
-                <div class="help-text">Shows the probability of each region belonging to its assigned event</div>
-            </div>
-            
-            <div id="message-box"></div>
-            
+            <button id="toggle-view">Switch View</button>
+            <button id="show-probs">Show Probabilities</button>
             <button id="check-solution">Check Solution</button>
-            <button id="next-level">Next Level</button>
-            <button id="restart-game">Restart Game</button>
+            <button id="solve">Show Solution</button>
+            <button id="reset">New Puzzle</button>
+            
+            <div class="probabilities" id="prob-list">
+                <!-- Probabilities will be listed here -->
+            </div>
         </div>
     </div>
-    <div class="tooltip" id="tooltip"></div>
+</body>
+</html>
