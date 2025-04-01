@@ -5,7 +5,6 @@
     <title>Venn Diagram Coloring Game</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
-    <script src="venn.js"></script>
     <style>
         body {
             margin: 0;
@@ -42,11 +41,26 @@
             min-width: 300px;
         }
         
+        .color-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .color-row {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #34495e;
+            border-radius: 5px;
+        }
+        
         .color-btn {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            margin: 5px;
+            margin-right: 15px;
             cursor: pointer;
             border: 3px solid transparent;
         }
@@ -55,31 +69,33 @@
             border-color: white;
         }
         
-        .area-totals {
-            margin: 20px 0;
-            padding: 10px;
-            background-color: #34495e;
-            border-radius: 5px;
-        }
-        
         .area-bar {
+            flex-grow: 1;
             height: 20px;
-            margin: 5px 0;
             background-color: #3498db;
             border-radius: 3px;
             transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .area-value {
+            position: absolute;
+            right: -50px;
+            top: 0;
+            color: white;
         }
         
         button {
             width: 100%;
-            padding: 10px;
-            margin: 5px 0;
+            padding: 12px;
+            margin: 8px 0;
             border: none;
             border-radius: 5px;
             background-color: #3498db;
             color: white;
             cursor: pointer;
             font-size: 16px;
+            transition: background-color 0.3s;
         }
         
         button:hover {
@@ -88,15 +104,18 @@
         
         .probabilities {
             margin-top: 20px;
+            background-color: #34495e;
+            padding: 10px;
+            border-radius: 5px;
             display: none;
         }
         
         .prob-item {
             display: flex;
             justify-content: space-between;
-            padding: 5px;
-            background-color: #34495e;
+            padding: 8px;
             margin: 5px 0;
+            background-color: #2c3e50;
             border-radius: 3px;
         }
     </style>
@@ -108,20 +127,32 @@
             <div id="graph-view"></div>
         </div>
         <div class="sidebar">
-            <h2>Color Selection</h2>
+            <h2>Color Selection & Areas</h2>
             <div class="color-selection">
-                <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
-                <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
-                <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
-                <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
-            </div>
-            
-            <div class="area-totals">
-                <h3>Area Totals</h3>
-                <div id="red-total" class="area-bar"></div>
-                <div id="blue-total" class="area-bar"></div>
-                <div id="green-total" class="area-bar"></div>
-                <div id="yellow-total" class="area-bar"></div>
+                <div class="color-row">
+                    <div class="color-btn" style="background-color: #e74c3c;" data-color="red"></div>
+                    <div class="area-bar" id="red-total">
+                        <span class="area-value">0%</span>
+                    </div>
+                </div>
+                <div class="color-row">
+                    <div class="color-btn" style="background-color: #3498db;" data-color="blue"></div>
+                    <div class="area-bar" id="blue-total">
+                        <span class="area-value">0%</span>
+                    </div>
+                </div>
+                <div class="color-row">
+                    <div class="color-btn" style="background-color: #2ecc71;" data-color="green"></div>
+                    <div class="area-bar" id="green-total">
+                        <span class="area-value">0%</span>
+                    </div>
+                </div>
+                <div class="color-row">
+                    <div class="color-btn" style="background-color: #f1c40f;" data-color="yellow"></div>
+                    <div class="area-bar" id="yellow-total">
+                        <span class="area-value">0%</span>
+                    </div>
+                </div>
             </div>
             
             <button id="toggle-view">Switch View</button>
@@ -130,10 +161,9 @@
             <button id="solve">Show Solution</button>
             <button id="reset">New Puzzle</button>
             
-            <div class="probabilities" id="prob-list">
-                <!-- Probabilities will be listed here -->
-            </div>
+            <div class="probabilities" id="prob-list"></div>
         </div>
     </div>
+    <script src="venn.js"></script>
 </body>
 </html>
