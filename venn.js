@@ -9,14 +9,21 @@ class VennGame {
         this.selectedColor = null;
         this.regions = {};
         this.graph = null;
+        this.vennDiagram = null;
         this.currentView = 'venn';
         this.initializeGame();
     }
 
     initializeGame() {
-        // Initialize Cytoscape for graph
+        // Initialize Venn diagram
+        this.vennDiagram = d3.select('#venn-container')
+            .append('svg')
+            .attr('width', '100%')
+            .attr('height', '100%');
+
+        // Initialize Cytoscape graph
         this.graph = cytoscape({
-            container: document.getElementById('graph-view'),
+            container: document.getElementById('graph-container'),
             style: [
                 {
                     selector: 'node',
@@ -48,60 +55,73 @@ class VennGame {
 
     generateNewPuzzle() {
         // Clear previous state
-        this.regions = {};
+        this.vennDiagram.selectAll('*').remove();
         this.graph.elements().remove();
-        d3.select('#venn-view').selectAll('*').remove();
+        this.regions = {};
 
-        // Generate regions with random areas
-        this.generateRegions();
-        
-        // Create graph representation
+        // Generate sets and regions
+        const numSets = Math.random() < 0.5 ? 3 : 4;
+        this.generateSets(numSets);
         this.createGraph();
-        
-        // Reset area totals
         this.updateAreaTotals();
     }
 
-    generateRegions() {
-        // Generate 3-4 sets with overlapping regions
-        const numSets = Math.random() < 0.5 ? 3 : 4;
-        const labels = ['A', 'B', 'C', 'D'].slice(0, numSets);
-        
-        // Generate all possible region combinations
-        for (let i = 1; i <= numSets; i++) {
-            this.getCombinations(labels, i).forEach(combo => {
-                const regionId = combo.join('');
-                this.regions[regionId] = {
-                    area: Math.random() * 0.5 + 0.1, // Random area between 0.1 and 0.6
-                    color: null,
-                    sets: combo
-                };
-            });
+    generateSets(numSets) {
+        const width = document.getElementById('venn-container').clientWidth;
+        const height = document.getElementById('venn-container').clientHeight;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(width, height) / 4;
+
+        // Generate set positions
+        for (let i = 0; i < numSets; i++) {
+            const angle = (2 * Math.PI * i) / numSets;
+            const x = centerX + (radius * 0.5 * Math.cos(angle));
+            const y = centerY + (radius * 0.5 * Math.sin(angle));
+            
+            const setName = String.fromCharCode(65 + i); // A, B, C, D
+            this.vennDiagram.append('circle')
+                .attr('cx', x)
+                .attr('cy', y)
+                .attr('r', radius)
+                .attr('class', 'venn-circle')
+                .attr('fill', '#bdc3c7')
+                .attr('id', `set-${setName}`);
+
+            // Generate regions for this set
+            this.generateRegions(setName, x, y, radius);
         }
+    }
+
+    generateRegions(setName, x, y, radius) {
+        // Create single set region
+        const regionId = setName;
+        this.regions[regionId] = {
+            area: Math.random() * 0.3 + 0.1, // Random area between 0.1 and 0.4
+            color: null,
+            sets: [setName],
+            center: { x, y }
+        };
+
+        // Create intersections with existing sets
+        Object.keys(this.regions).forEach(existingRegion => {
+            if (existingRegion.length === 1 && existingRegion !== setName) {
+                const intersectionId = [existingRegion, setName].sort().join('');
+                this.regions[intersectionId] = {
+                    area: Math.random() * 0.2, // Random intersection area
+                    color: null,
+                    sets: [existingRegion, setName],
+                    center: {
+                        x: (x + this.regions[existingRegion].center.x) / 2,
+                        y: (y + this.regions[existingRegion].center.y) / 2
+                    }
+                };
+            }
+        });
 
         // Normalize areas to sum to 1
         const totalArea = Object.values(this.regions).reduce((sum, r) => sum + r.area, 0);
         Object.values(this.regions).forEach(r => r.area /= totalArea);
-    }
-
-    getCombinations(arr, len) {
-        const result = [];
-        
-        function combine(current, start) {
-            if (current.length === len) {
-                result.push([...current]);
-                return;
-            }
-            
-            for (let i = start; i < arr.length; i++) {
-                current.push(arr[i]);
-                combine(current, i + 1);
-                current.pop();
-            }
-        }
-        
-        combine([], 0);
-        return result;
     }
 
     createGraph() {
@@ -109,7 +129,11 @@ class VennGame {
         Object.keys(this.regions).forEach(regionId => {
             this.graph.add({
                 group: 'nodes',
-                data: { id: regionId }
+                data: { id: regionId },
+                position: {
+                    x: this.regions[regionId].center.x,
+                    y: this.regions[regionId].center.y
+                }
             });
         });
 
@@ -119,17 +143,12 @@ class VennGame {
                 if (region1 < region2 && this.areRegionsAdjacent(region1, region2)) {
                     this.graph.add({
                         group: 'edges',
-                        data: { 
-                            id: `${region1}-${region2}`,
-                            source: region1,
-                            target: region2
-                        }
+                        data: { source: region1, target: region2 }
                     });
                 }
             });
         });
 
-        // Apply layout
         this.graph.layout({
             name: 'cose',
             padding: 50,
@@ -146,54 +165,53 @@ class VennGame {
     colorRegion(regionId) {
         if (!this.selectedColor) return;
 
-        // Color the region
         this.regions[regionId].color = this.selectedColor;
         
-        // Update graph node color
+        // Update Venn diagram
+        const sets = regionId.split('');
+        sets.forEach(set => {
+            this.vennDiagram.select(`#set-${set}`)
+                .attr('fill', this.colors[this.selectedColor]);
+        });
+
+        // Update graph
         this.graph.$(`#${regionId}`).style('background-color', this.colors[this.selectedColor]);
         
-        // Update area totals
         this.updateAreaTotals();
     }
 
     updateAreaTotals() {
         const totals = { red: 0, blue: 0, green: 0, yellow: 0 };
         
-        // Calculate totals for each color
         Object.values(this.regions).forEach(region => {
             if (region.color) {
                 totals[region.color] += region.area;
             }
         });
 
-        // Update display
         Object.entries(totals).forEach(([color, area]) => {
             const bar = document.getElementById(`${color}-total`);
             bar.style.width = `${area * 100}%`;
-            bar.querySelector('.area-value').textContent = `${(area * 100).toFixed(1)}%`;
+            bar.parentElement.querySelector('.area-value').textContent = 
+                `${(area * 100).toFixed(1)}%`;
         });
     }
 
     checkSolution() {
-        const totals = { red: 0, blue: 0, green: 0, yellow: 0 };
-        
-        // Calculate current totals
-        Object.values(this.regions).forEach(region => {
-            if (region.color) {
-                totals[region.color] += region.area;
-            }
-        });
-
-        // Check if solution maximizes areas in priority order
-        const colorPriority = ['red', 'blue', 'green', 'yellow'];
-        let remainingRegions = {...this.regions};
+        const colorOrder = ['red', 'blue', 'green', 'yellow'];
         let isOptimal = true;
+        let remainingRegions = {...this.regions};
 
-        colorPriority.forEach(color => {
-            const maxPossibleArea = this.calculateMaxPossibleArea(remainingRegions, color);
-            if (Math.abs(totals[color] - maxPossibleArea) > 0.001) {
+        colorOrder.forEach(color => {
+            const maxArea = this.findMaxIndependentSet(remainingRegions);
+            const actualArea = Object.values(this.regions)
+                .filter(r => r.color === color)
+                .reduce((sum, r) => sum + r.area, 0);
+
+            if (Math.abs(maxArea - actualArea) > 0.001) {
                 isOptimal = false;
             }
+
             // Remove colored regions for next iteration
             Object.keys(remainingRegions).forEach(regionId => {
                 if (this.regions[regionId].color === color) {
@@ -202,64 +220,12 @@ class VennGame {
             });
         });
 
-        alert(isOptimal ? 'Correct! This is an optimal solution!' : 'Not optimal. Try to maximize red first, then blue, then green, then yellow.');
+        alert(isOptimal ? 
+            'Correct! This is an optimal solution!' : 
+            'Not optimal. Try to maximize red first, then blue, then green, then yellow.');
     }
 
-    calculateMaxPossibleArea(regions, color) {
-        // Create a graph coloring problem
-        const graph = new Map();
-        Object.keys(regions).forEach(region1 => {
-            graph.set(region1, new Set());
-            Object.keys(regions).forEach(region2 => {
-                if (region1 !== region2 && this.areRegionsAdjacent(region1, region2)) {
-                    graph.get(region1).add(region2);
-                }
-            });
-        });
-
-        // Find maximum independent set (greedy approach)
-        const sortedRegions = Object.keys(regions)
-            .sort((a, b) => regions[b].area - regions[a].area);
-        
-        let totalArea = 0;
-        const colored = new Set();
-
-        sortedRegions.forEach(region => {
-            const neighbors = graph.get(region);
-            if (![...neighbors].some(n => colored.has(n))) {
-                colored.add(region);
-                totalArea += regions[region].area;
-            }
-        });
-
-        return totalArea;
-    }
-
-    showSolution() {
-        // Reset all colors
-        Object.keys(this.regions).forEach(regionId => {
-            this.regions[regionId].color = null;
-            this.graph.$(`#${regionId}`).style('background-color', '#bdc3c7');
-        });
-
-        // Apply optimal coloring
-        const colorPriority = ['red', 'blue', 'green', 'yellow'];
-        let remainingRegions = {...this.regions};
-
-        colorPriority.forEach(color => {
-            const solution = this.findOptimalColoring(remainingRegions, color);
-            solution.forEach(regionId => {
-                this.regions[regionId].color = color;
-                this.graph.$(`#${regionId}`).style('background-color', this.colors[color]);
-                delete remainingRegions[regionId];
-            });
-        });
-
-        this.updateAreaTotals();
-    }
-
-    findOptimalColoring(regions, color) {
-        // Similar to calculateMaxPossibleArea but returns regions to color
+    findMaxIndependentSet(regions) {
         const graph = new Map();
         Object.keys(regions).forEach(region1 => {
             graph.set(region1, new Set());
@@ -273,18 +239,18 @@ class VennGame {
         const sortedRegions = Object.keys(regions)
             .sort((a, b) => regions[b].area - regions[a].area);
         
-        const toColor = new Set();
+        let maxArea = 0;
         const colored = new Set();
 
         sortedRegions.forEach(region => {
             const neighbors = graph.get(region);
             if (![...neighbors].some(n => colored.has(n))) {
                 colored.add(region);
-                toColor.add(region);
+                maxArea += regions[region].area;
             }
         });
 
-        return [...toColor];
+        return maxArea;
     }
 
     setupEventListeners() {
@@ -309,12 +275,12 @@ class VennGame {
         // Button handlers
         document.getElementById('toggle-view').addEventListener('click', () => {
             if (this.currentView === 'venn') {
-                document.getElementById('venn-view').style.display = 'none';
-                document.getElementById('graph-view').style.display = 'block';
+                document.getElementById('venn-container').style.display = 'none';
+                document.getElementById('graph-container').style.display = 'block';
                 this.currentView = 'graph';
             } else {
-                document.getElementById('venn-view').style.display = 'block';
-                document.getElementById('graph-view').style.display = 'none';
+                document.getElementById('venn-container').style.display = 'block';
+                document.getElementById('graph-container').style.display = 'none';
                 this.currentView = 'venn';
             }
         });
@@ -340,9 +306,59 @@ class VennGame {
         document.getElementById('check-solution').addEventListener('click', () => 
             this.checkSolution());
         document.getElementById('solve').addEventListener('click', () => 
-            this.showSolution());
+            this.showOptimalSolution());
         document.getElementById('reset').addEventListener('click', () => 
             this.generateNewPuzzle());
+    }
+
+    showOptimalSolution() {
+        // Reset all colors
+        Object.keys(this.regions).forEach(regionId => {
+            this.regions[regionId].color = null;
+            this.graph.$(`#${regionId}`).style('background-color', '#bdc3c7');
+        });
+
+        const colorOrder = ['red', 'blue', 'green', 'yellow'];
+        let remainingRegions = {...this.regions};
+
+        colorOrder.forEach(color => {
+            const solution = this.findOptimalColoring(remainingRegions);
+            solution.forEach(regionId => {
+                this.regions[regionId].color = color;
+                this.graph.$(`#${regionId}`).style('background-color', this.colors[color]);
+                delete remainingRegions[regionId];
+            });
+        });
+
+        this.updateAreaTotals();
+    }
+
+    findOptimalColoring(regions) {
+        const graph = new Map();
+        Object.keys(regions).forEach(region1 => {
+            graph.set(region1, new Set());
+            Object.keys(regions).forEach(region2 => {
+                if (region1 !== region2 && this.areRegionsAdjacent(region1, region2)) {
+                    graph.get(region1).add(region2);
+                }
+            });
+        });
+
+        const sortedRegions = Object.keys(regions)
+            .sort((a, b) => regions[b].area - regions[a].area);
+        
+        const toColor = new Set();
+        const colored = new Set();
+
+        sortedRegions.forEach(region => {
+            const neighbors = graph.get(region);
+            if (![...neighbors].some(n => colored.has(n))) {
+                colored.add(region);
+                toColor.add(region);
+            }
+        });
+
+        return [...toColor];
     }
 }
 
