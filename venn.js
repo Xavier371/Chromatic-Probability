@@ -16,10 +16,9 @@ class VennGame {
     initializeGame() {
         // Initialize Venn diagram
         this.vennSvg = d3.select('#venn-container')
-            .append('svg')
-            .attr('width', '100%')
-            .attr('height', '100%')
-            .attr('viewBox', '0 0 800 600');
+            .attr('viewBox', '0 0 800 600')
+            .append('g')
+            .attr('transform', 'translate(50, 50)');
 
         // Initialize Cytoscape graph
         this.graph = cytoscape({
@@ -30,13 +29,14 @@ class VennGame {
                     style: {
                         'background-color': '#fff',
                         'border-color': '#000',
-                        'border-width': 1,
+                        'border-width': 2,
                         'label': 'data(id)',
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'width': '40px',
-                        'height': '40px',
-                        'font-size': '16px'
+                        'width': '45px',
+                        'height': '45px',
+                        'font-size': '18px',
+                        'font-weight': 'bold'
                     }
                 },
                 {
@@ -60,103 +60,137 @@ class VennGame {
         this.graph.elements().remove();
         this.regions = {};
 
-        this.generateVennDiagram();
+        // Generate initial probabilities
+        this.generateProbabilities();
+        
+        // Create Venn diagram
+        this.createVennDiagram();
+        
+        // Create graph
         this.createGraph();
+        
+        // Update displays
         this.updatePercentages();
         this.displayRegionProbabilities();
     }
 
-    generateVennDiagram() {
-        const centerX = 400;
-        const centerY = 300;
-        const radius = 150;
-        
-        // Define the three circles' centers
-        const circles = [
-            { x: centerX - radius/2, y: centerY - radius/3, r: radius },
-            { x: centerX + radius/2, y: centerY - radius/3, r: radius },
-            { x: centerX, y: centerY + radius/3, r: radius }
-        ];
-
-        // Draw the circles
-        circles.forEach((circle, i) => {
-            this.vennSvg.append('circle')
-                .attr('cx', circle.x)
-                .attr('cy', circle.y)
-                .attr('r', circle.r)
-                .attr('fill', 'none')
-                .attr('stroke', 'black')
-                .attr('stroke-width', 2);
-        });
-
-        // Calculate region centers and areas
-        this.calculateRegions(circles);
-    }
-
-    calculateRegions(circles) {
-        // Define region centers (calculated based on circle intersections)
-        const regionCenters = {
-            'a': { x: circles[0].x - circles[0].r/2, y: circles[0].y, prob: 0.03 },
-            'b': { x: circles[2].x - circles[2].r/2, y: circles[2].y + circles[2].r/3, prob: 0.11 },
-            'c': { x: circles[1].x + circles[1].r/2, y: circles[1].y, prob: 0.07 },
-            'd': { x: (circles[0].x + circles[1].x)/2, y: circles[0].y - circles[0].r/3, prob: 0.09 },
-            'e': { x: circles[1].x - circles[1].r/4, y: circles[1].y + circles[1].r/2, prob: 0.06 },
-            'f': { x: circles[0].x + circles[0].r/4, y: circles[0].y + circles[0].r/2, prob: 0.06 },
-            'g': { x: circles[0].x - circles[0].r, y: circles[0].y - circles[0].r, prob: 0.57 },
-            'h': { x: (circles[0].x + circles[1].x + circles[2].x)/3, 
-                   y: (circles[0].y + circles[1].y + circles[2].y)/3, prob: 0.01 }
+    generateProbabilities() {
+        // Generate random probabilities that sum to 1
+        // with constraints on relative sizes
+        let probs = {
+            'g': 0.45 + Math.random() * 0.15,  // Outer region (0.45-0.60)
+            'h': 0.01 + Math.random() * 0.04,  // Center region (0.01-0.05)
+            'a': 0.03 + Math.random() * 0.12,
+            'b': 0.03 + Math.random() * 0.12,
+            'c': 0.03 + Math.random() * 0.12,
+            'd': 0.03 + Math.random() * 0.12,
+            'e': 0.03 + Math.random() * 0.12,
+            'f': 0.03 + Math.random() * 0.12
         };
 
-        // Create regions with probabilities
-        Object.entries(regionCenters).forEach(([label, data]) => {
-            this.regions[label] = {
-                center: { x: data.x, y: data.y },
-                probability: data.prob,
-                color: null
-            };
-
-            // Add region label
-            this.vennSvg.append('text')
-                .attr('x', data.x)
-                .attr('y', data.y)
-                .attr('text-anchor', 'middle')
-                .attr('dominant-baseline', 'middle')
-                .attr('class', 'region-label')
-                .text(label);
+        // Normalize to sum to 1
+        const total = Object.values(probs).reduce((a, b) => a + b, 0);
+        Object.keys(probs).forEach(key => {
+            probs[key] = Math.round((probs[key] / total) * 100) / 100;
         });
 
-        // Create clip paths for each region
-        this.createClipPaths();
+        // Store probabilities
+        Object.entries(probs).forEach(([key, prob]) => {
+            this.regions[key] = {
+                probability: prob,
+                color: null
+            };
+        });
     }
 
-    createClipPaths() {
-        // Define clip paths for each region
-        // This will be used for coloring regions
+    createVennDiagram() {
+        const width = 700;
+        const height = 500;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = 150;
+
+        // Define circle positions
+        const circles = [
+            { cx: centerX - radius/2, cy: centerY - radius/3, r: radius },
+            { cx: centerX + radius/2, cy: centerY - radius/3, r: radius },
+            { cx: centerX, cy: centerY + radius/3, r: radius }
+        ];
+
+        // Draw circles
+        circles.forEach((circle, i) => {
+            this.vennSvg.append('circle')
+                .attr('class', 'venn-circle')
+                .attr('cx', circle.cx)
+                .attr('cy', circle.cy)
+                .attr('r', circle.r);
+        });
+
+        // Define region centers
+        const regionCenters = {
+            'g': { x: centerX - radius*1.2, y: centerY - radius*1.2 },  // Outer region
+            'a': { x: centerX - radius, y: centerY - radius/2 },
+            'b': { x: centerX, y: centerY + radius*0.8 },
+            'c': { x: centerX + radius, y: centerY - radius/2 },
+            'd': { x: centerX, y: centerY - radius/2 },
+            'e': { x: centerX + radius/3, y: centerY + radius/3 },
+            'f': { x: centerX - radius/3, y: centerY + radius/3 },
+            'h': { x: centerX, y: centerY }  // Center intersection
+        };
+
+        // Add region labels with probabilities
+        Object.entries(regionCenters).forEach(([label, pos]) => {
+            this.vennSvg.append('text')
+                .attr('class', 'region-label')
+                .attr('x', pos.x)
+                .attr('y', pos.y)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .text(label);
+
+            // Store center positions for later use
+            this.regions[label].center = pos;
+        });
+
+        // Create clip paths for region coloring
+        this.createClipPaths(circles);
+    }
+        createClipPaths(circles) {
         const defs = this.vennSvg.append('defs');
 
-        // Add clip paths for each region
-        Object.keys(this.regions).forEach(region => {
-            const clipPath = defs.append('clipPath')
-                .attr('id', `clip-${region}`);
+        // Create paths for each region
+        const regions = {
+            'g': this.createOuterRegionPath(circles),
+            'a': this.createSingleSetPath(circles[0]),
+            'b': this.createSingleSetPath(circles[2]),
+            'c': this.createSingleSetPath(circles[1]),
+            'd': this.createIntersectionPath([circles[0], circles[1]]),
+            'e': this.createIntersectionPath([circles[1], circles[2]]),
+            'f': this.createIntersectionPath([circles[0], circles[2]]),
+            'h': this.createTripleIntersectionPath(circles)
+        };
 
-            // Add appropriate paths based on region
-            // This would define the exact shape of each region
-            // You would need to calculate the proper paths for each region
+        // Add clip paths
+        Object.entries(regions).forEach(([id, pathData]) => {
+            defs.append('clipPath')
+                .attr('id', `clip-${id}`)
+                .append('path')
+                .attr('d', pathData);
         });
     }
 
     createGraph() {
-        // Add nodes for each region
-        Object.keys(this.regions).forEach(label => {
+        // Add nodes
+        Object.keys(this.regions).forEach(id => {
             this.graph.add({
                 group: 'nodes',
-                data: { id: label }
+                data: { id: id }
             });
         });
 
-        // Define adjacency for the Venn diagram regions
+        // Define adjacency relationships
         const adjacencyList = {
-            'g': ['a', 'b', 'c', 'd', 'e', 'f'], // outer region connects to all except h
+            'g': ['a', 'b', 'c', 'd', 'e', 'f'],  // outer region connects to all except h
             'a': ['d', 'f', 'g', 'h'],
             'b': ['e', 'f', 'g', 'h'],
             'c': ['d', 'e', 'g', 'h'],
@@ -166,10 +200,10 @@ class VennGame {
             'h': ['a', 'b', 'c', 'd', 'e', 'f']
         };
 
-        // Add edges based on adjacency
+        // Add edges
         Object.entries(adjacencyList).forEach(([source, targets]) => {
             targets.forEach(target => {
-                if (source < target) { // Avoid duplicate edges
+                if (source < target) {  // Avoid duplicate edges
                     this.graph.add({
                         group: 'edges',
                         data: {
@@ -203,25 +237,15 @@ class VennGame {
         this.graph.$(`#${regionId}`).style('background-color', this.colors[this.selectedColor]);
         
         // Update Venn diagram region
-        this.colorVennRegion(regionId, this.selectedColor);
-        
+        this.vennSvg.selectAll(`.region-${regionId}-fill`).remove();
+        this.vennSvg.append('path')
+            .attr('class', `region-${regionId}-fill`)
+            .attr('clip-path', `url(#clip-${regionId})`)
+            .attr('d', this.getRegionPath(regionId))
+            .attr('fill', this.colors[this.selectedColor])
+            .attr('opacity', 0.6);
+
         this.updatePercentages();
-    }
-
-    colorVennRegion(regionId, color) {
-        // Remove any existing coloring for this region
-        this.vennSvg.selectAll(`.region-${regionId}-color`).remove();
-
-        // Add new colored region
-        const region = this.regions[regionId];
-        const coloredRegion = this.vennSvg.append('path')
-            .attr('class', `region-${regionId}-color`)
-            .attr('fill', this.colors[color])
-            .attr('opacity', 0.5)
-            .attr('clip-path', `url(#clip-${regionId})`);
-
-        // Set the path data based on the region
-        // This would need to match the clip path definitions
     }
 
     updatePercentages() {
@@ -243,9 +267,9 @@ class VennGame {
     displayRegionProbabilities() {
         const regionList = document.getElementById('region-list');
         regionList.innerHTML = Object.entries(this.regions)
-            .map(([label, region]) => 
+            .map(([id, region]) => 
                 `<div class="region-item">
-                    <span>Region ${label}:</span>
+                    <span>Region ${id}:</span>
                     <span>${region.probability.toFixed(2)}</span>
                 </div>`)
             .join('');
@@ -279,8 +303,7 @@ class VennGame {
             message.style.backgroundColor = '#fff3cd';
         }
     }
-
-    isValidColoring() {
+        isValidColoring() {
         return !this.graph.edges().some(edge => {
             const sourceColor = this.regions[edge.source().id()].color;
             const targetColor = this.regions[edge.target().id()].color;
@@ -349,13 +372,13 @@ class VennGame {
         Object.keys(this.regions).forEach(regionId => {
             this.regions[regionId].color = null;
             this.graph.$(`#${regionId}`).style('background-color', '#fff');
-            this.vennSvg.selectAll(`.region-${regionId}-color`).remove();
+            this.vennSvg.selectAll(`.region-${regionId}-fill`).remove();
         });
 
         colorOrder.forEach(color => {
             const regionsToColor = this.findOptimalColoringSet(remainingRegions);
             regionsToColor.forEach(regionId => {
-                this.regions[regionId].color = color;
+                this.selectedColor = color;
                 this.colorRegion(regionId);
                 delete remainingRegions[regionId];
             });
@@ -365,7 +388,6 @@ class VennGame {
     }
 
     findOptimalColoringSet(regions) {
-        // Similar to findMaxIndependentSet but returns regions to color
         const graph = new Map();
         Object.keys(regions).forEach(region1 => {
             graph.set(region1, new Set());
@@ -394,6 +416,35 @@ class VennGame {
         return [...toColor];
     }
 
+    // Helper methods for path generation
+    createOuterRegionPath(circles) {
+        // Create path for region g (outer region)
+        return `M 0,0 H 800 V 600 H 0 Z`;
+    }
+
+    createSingleSetPath(circle) {
+        return `M ${circle.cx},${circle.cy} m -${circle.r},0 a ${circle.r},${circle.r} 0 1,0 ${circle.r*2},0 a ${circle.r},${circle.r} 0 1,0 -${circle.r*2},0`;
+    }
+
+    createIntersectionPath(circles) {
+        // Simplified intersection path
+        const [c1, c2] = circles;
+        return `M ${c1.cx},${c1.cy} A ${c1.r},${c1.r} 0 0,1 ${c2.cx},${c2.cy} A ${c2.r},${c2.r} 0 0,1 ${c1.cx},${c1.cy}`;
+    }
+
+    createTripleIntersectionPath(circles) {
+        // Simplified triple intersection path
+        const [c1, c2, c3] = circles;
+        return `M ${c1.cx},${c1.cy} A ${c1.r},${c1.r} 0 0,1 ${c2.cx},${c2.cy} 
+                A ${c2.r},${c2.r} 0 0,1 ${c3.cx},${c3.cy} 
+                A ${c3.r},${c3.r} 0 0,1 ${c1.cx},${c1.cy}`;
+    }
+
+    getRegionPath(regionId) {
+        // Return full path for region coloring
+        return `M 0,0 H 800 V 600 H 0 Z`;
+    }
+
     setupEventListeners() {
         // Color selection
         document.querySelectorAll('.color-btn').forEach(btn => {
@@ -418,8 +469,11 @@ class VennGame {
         document.getElementById('solve').addEventListener('click', () => this.solve());
         document.getElementById('restart').addEventListener('click', () => this.generateNewPuzzle());
         document.getElementById('help').addEventListener('click', () => {
-            alert('Color the regions to maximize the area covered by each color in order: ' +
-                  'RED first, then BLUE, then GREEN, then YELLOW. ' +
+            alert('Color the regions to maximize the area covered by each color in order:\n\n' +
+                  '1. RED (maximize first)\n' +
+                  '2. BLUE (maximize in remaining regions)\n' +
+                  '3. GREEN (maximize in remaining regions)\n' +
+                  '4. YELLOW (maximize in remaining regions)\n\n' +
                   'Adjacent regions cannot share the same color.');
         });
     }
