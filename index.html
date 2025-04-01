@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Venn Diagram Coloring Game</title>
-    <script src="https://d3.js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <style>
         body {
@@ -43,13 +43,13 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
 
         .color-selection {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
         }
 
         .color-row {
@@ -99,20 +99,22 @@
             padding: 15px;
             border-radius: 5px;
             border: 1px solid #dee2e6;
+            font-family: monospace;
+            font-size: 14px;
         }
 
         .region-item {
             display: flex;
             justify-content: space-between;
             margin: 5px 0;
-            font-family: monospace;
-            font-size: 14px;
+            padding: 3px 0;
         }
 
-        .button-group {
+        .button-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin: 10px 0;
         }
 
         button {
@@ -136,12 +138,13 @@
             border: 1px solid #dee2e6;
             font-size: 14px;
             line-height: 1.5;
+            margin: 10px 0;
         }
 
-        .venn-region {
-            opacity: 0.7;
+        .venn-circle {
+            fill: none;
             stroke: black;
-            stroke-width: 1;
+            stroke-width: 2;
         }
 
         .region-label {
@@ -150,19 +153,22 @@
             pointer-events: none;
         }
 
+        .region-fill {
+            opacity: 0.6;
+        }
+
         #message {
             padding: 10px;
+            margin-top: 10px;
             border-radius: 5px;
             display: none;
-            margin-top: 10px;
-            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="left-panel">
-            <div id="venn-container"></div>
+            <svg id="venn-container"></svg>
             <div id="graph-container"></div>
         </div>
         
@@ -202,7 +208,7 @@
                 Maximize the probability of red, then blue, then green, then yellow such that no two colors are adjacent
             </div>
 
-            <div class="button-group">
+            <div class="button-container">
                 <button id="check">Check</button>
                 <button id="help">Help</button>
                 <button id="solve">Solve</button>
