@@ -17,17 +17,20 @@ class VennGame {
         this.vennCtx = this.vennCanvas.getContext('2d');
         this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-            
 
         // Set canvas sizes
         this.resizeCanvases();
         window.addEventListener('resize', () => this.resizeCanvases());
 
         // Game state
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
+
         this.circles = [
-            { x: 0, y: 0, radius: 80, label: 'A' },
-            { x: 0, y: 0, radius: 80, label: 'B' },
-            { x: 0, y: 0, radius: 80, label: 'C' }
+            { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
+            { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
+            { x: centerX, y: centerY + baseRadius, radius: baseRadius, label: 'C' }
         ];
         
         this.targetCircles = null;
@@ -42,63 +45,34 @@ class VennGame {
     }
 
     resizeCanvases() {
-        // Venn diagram canvas
-        this.vennCanvas.width = this.vennCanvas.offsetWidth;
-        this.vennCanvas.height = this.vennCanvas.offsetHeight;
+        // Get container dimensions
+        const vennContainer = this.vennCanvas.parentElement;
+        const graphsContainer = this.currentGraphCanvas.parentElement;
 
-        // Graph canvases
-        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
-        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
-        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
-        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
+        // Set canvas sizes based on their containers
+        this.vennCanvas.width = vennContainer.offsetWidth;
+        this.vennCanvas.height = vennContainer.offsetHeight;
 
-        this.draw();
-    }
+        this.currentGraphCanvas.width = graphsContainer.offsetWidth;
+        this.currentGraphCanvas.height = (graphsContainer.offsetHeight - 20) / 2;
 
-class VennGame {
-    constructor() {
-        // Canvas setup
-        this.vennCanvas = document.getElementById('vennCanvas');
-        this.currentGraphCanvas = document.getElementById('currentGraph');
-        this.targetGraphCanvas = document.getElementById('targetGraph');
-        
-        this.vennCtx = this.vennCanvas.getContext('2d');
-        this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
-        this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
+        this.targetGraphCanvas.width = graphsContainer.offsetWidth;
+        this.targetGraphCanvas.height = (graphsContainer.offsetHeight - 20) / 2;
 
-        // Set canvas sizes
-        this.resizeCanvases();
-        window.addEventListener('resize', () => this.resizeCanvases());
+        // Adjust initial circle positions based on new canvas size
+        if (!this.targetCircles) {
+            const centerX = this.vennCanvas.width / 2;
+            const centerY = this.vennCanvas.height / 2;
+            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
 
-        // Game state
-        this.circles = [
-            { x: 0, y: 0, radius: 80, label: 'A' },
-            { x: 0, y: 0, radius: 80, label: 'B' },
-            { x: 0, y: 0, radius: 80, label: 'C' }
-        ];
-        
-        this.targetCircles = null;
-        this.selectedCircle = null;
-        this.isDragging = false;
-        this.isScaling = false;
-        this.lastMousePos = { x: 0, y: 0 };
+            this.circles = [
+                { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
+                { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
+                { x: centerX, y: centerY + baseRadius, radius: baseRadius, label: 'C' }
+            ];
+        }
 
-        // Initialize game
-        this.initializeControls();
-        this.resetGame();
-    }
-
-    resizeCanvases() {
-        // Venn diagram canvas
-        this.vennCanvas.width = this.vennCanvas.offsetWidth;
-        this.vennCanvas.height = this.vennCanvas.offsetHeight;
-
-        // Graph canvases
-        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
-        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
-        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
-        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
-
+        // Force redraw
         this.draw();
     }
 
@@ -119,14 +93,18 @@ class VennGame {
     }
 
     resetGame() {
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
+
         // Generate random target configuration
         this.targetCircles = this.generateRandomConfiguration();
         
         // Reset current circles to default positions
         this.circles = [
-            { x: this.vennCanvas.width * 0.3, y: this.vennCanvas.height * 0.4, radius: 80, label: 'A' },
-            { x: this.vennCanvas.width * 0.5, y: this.vennCanvas.height * 0.4, radius: 80, label: 'B' },
-            { x: this.vennCanvas.width * 0.7, y: this.vennCanvas.height * 0.4, radius: 80, label: 'C' }
+            { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
+            { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
+            { x: centerX, y: centerY + baseRadius, radius: baseRadius, label: 'C' }
         ];
 
         document.getElementById('winMessage').classList.add('hidden');
@@ -134,24 +112,28 @@ class VennGame {
     }
 
     generateRandomConfiguration() {
-        const padding = 100;
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
+        const maxOffset = baseRadius * 1.5;
+
         return [
             {
-                x: padding + Math.random() * (this.vennCanvas.width - 2 * padding),
-                y: padding + Math.random() * (this.vennCanvas.height - 2 * padding),
-                radius: 60 + Math.random() * 40,
+                x: centerX + (Math.random() - 0.5) * maxOffset,
+                y: centerY + (Math.random() - 0.5) * maxOffset,
+                radius: baseRadius * (0.8 + Math.random() * 0.4),
                 label: 'A'
             },
             {
-                x: padding + Math.random() * (this.vennCanvas.width - 2 * padding),
-                y: padding + Math.random() * (this.vennCanvas.height - 2 * padding),
-                radius: 60 + Math.random() * 40,
+                x: centerX + (Math.random() - 0.5) * maxOffset,
+                y: centerY + (Math.random() - 0.5) * maxOffset,
+                radius: baseRadius * (0.8 + Math.random() * 0.4),
                 label: 'B'
             },
             {
-                x: padding + Math.random() * (this.vennCanvas.width - 2 * padding),
-                y: padding + Math.random() * (this.vennCanvas.height - 2 * padding),
-                radius: 60 + Math.random() * 40,
+                x: centerX + (Math.random() - 0.5) * maxOffset,
+                y: centerY + (Math.random() - 0.5) * maxOffset,
+                radius: baseRadius * (0.8 + Math.random() * 0.4),
                 label: 'C'
             }
         ];
@@ -160,8 +142,8 @@ class VennGame {
     getMousePos(e) {
         const rect = this.vennCanvas.getBoundingClientRect();
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) * (this.vennCanvas.width / rect.width),
+            y: (e.clientY - rect.top) * (this.vennCanvas.height / rect.height)
         };
     }
 
@@ -292,54 +274,54 @@ class VennGame {
         return regions;
     }
 
-   drawGraph(ctx, circles) {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    const regions = this.getRegions(circles);
-    const nodes = new Map();
-
-    // Scale factors for the graph
-    const scaleX = ctx.canvas.width / this.vennCanvas.width;
-    const scaleY = ctx.canvas.height / this.vennCanvas.height;
-    const scale = Math.min(scaleX, scaleY);
-
-    // Center offset for the graph
-    const offsetX = (ctx.canvas.width - this.vennCanvas.width * scale) / 2;
-    const offsetY = (ctx.canvas.height - this.vennCanvas.height * scale) / 2;
-
-    // Draw nodes
-    regions.forEach(region => {
-        const x = region.center.x * scale + offsetX;
-        const y = region.center.y * scale + offsetY;
+    drawGraph(ctx, circles) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        nodes.set(region.label, { x, y });
+        const regions = this.getRegions(circles);
+        const nodes = new Map();
 
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'black';
-        ctx.fill();
+        // Scale factors for the graph
+        const scaleX = ctx.canvas.width / this.vennCanvas.width;
+        const scaleY = ctx.canvas.height / this.vennCanvas.height;
+        const scale = Math.min(scaleX, scaleY);
 
-        // Draw labels with better positioning
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(region.label, x + 8, y);
-    });
+        // Center offset for the graph
+        const offsetX = (ctx.canvas.width - this.vennCanvas.width * scale) / 2;
+        const offsetY = (ctx.canvas.height - this.vennCanvas.height * scale) / 2;
 
-    // Draw edges
-    ctx.beginPath();
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    nodes.forEach((node1, label1) => {
-        nodes.forEach((node2, label2) => {
-            if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
-                ctx.moveTo(node1.x, node1.y);
-                ctx.lineTo(node2.x, node2.y);
-            }
+        // Draw nodes
+        regions.forEach(region => {
+            const x = region.center.x * scale + offsetX;
+            const y = region.center.y * scale + offsetY;
+            
+            nodes.set(region.label, { x, y });
+
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'black';
+            ctx.fill();
+
+            // Draw labels with better positioning
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(region.label, x + 8, y);
         });
-    });
-    ctx.stroke();
-}
+
+        // Draw edges
+        ctx.beginPath();
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        nodes.forEach((node1, label1) => {
+            nodes.forEach((node2, label2) => {
+                if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
+                    ctx.moveTo(node1.x, node1.y);
+                    ctx.lineTo(node2.x, node2.y);
+                }
+            });
+        });
+        ctx.stroke();
+    }
 
     areRegionsAdjacent(label1, label2) {
         // Define adjacency rules
