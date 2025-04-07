@@ -98,7 +98,6 @@ class VennGame {
         
         return perfectOverlap !== targetOverlap;
     }
-
         initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
@@ -211,7 +210,6 @@ class VennGame {
 
         document.getElementById('resetButton').addEventListener('click', () => this.resetGame());
     }
-
         getRegions(circles) {
         const regions = [];
         const labels = ['A', 'B', 'C'];
@@ -368,7 +366,6 @@ class VennGame {
     handleTouchEnd() {
         this.handleMouseUp();
     }
-
         drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
@@ -527,5 +524,3 @@ class VennGame {
 window.addEventListener('load', () => {
     new VennGame();
 });
-    
-    
