@@ -43,8 +43,7 @@ class VennGame {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        // Increased tolerance for touching detection
-        return Math.abs(distance - (circle1.radius + circle2.radius)) < 10;
+        return distance <= (circle1.radius + circle2.radius);
     }
 
     hasOverlapArea(circle1, circle2) {
@@ -73,7 +72,7 @@ class VennGame {
                 }
             }
         }
-        return touchingCount >= 1; // At least one pair of circles should be touching/overlapping
+        return touchingCount >= 1;
     }
         initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
@@ -112,8 +111,8 @@ class VennGame {
         
         // Generate random positions ensuring some variation
         const positions = [];
-        const minDistance = baseRadius * 0.5; // Minimum distance between circle centers
-        const maxDistance = baseRadius * 2.5; // Maximum distance between circle centers
+        const minDistance = baseRadius * 0.8; // Increased minimum distance for better spacing
+        const maxDistance = baseRadius * 2.0; // Adjusted maximum distance
         
         for (let i = 0; i < 3; i++) {
             let x, y, valid;
@@ -138,7 +137,7 @@ class VennGame {
             positions.push({
                 x: x,
                 y: y,
-                radius: baseRadius * (0.8 + Math.random() * 0.4), // Random radius variation
+                radius: baseRadius * (0.8 + Math.random() * 0.4),
                 label: ['A', 'B', 'C'][i]
             });
         }
@@ -327,7 +326,6 @@ class VennGame {
         this.scaling = false;
     }
 
-    // Touch event handlers mirror mouse events
     handleTouchStart(e) {
         e.preventDefault();
         const touch = e.touches[0];
@@ -343,6 +341,7 @@ class VennGame {
     handleTouchEnd() {
         this.handleMouseUp();
     }
+    
         drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
@@ -353,15 +352,15 @@ class VennGame {
         ctx.stroke();
     }
 
-     drawGraph(ctx, circles) {
+    drawGraph(ctx, circles) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         const regions = this.getRegions(circles);
         
-        // Calculate scaling factor to fit nodes in canvas
+        // Calculate scaling factor to fit nodes in canvas with more spacing
         const boundingBox = this.calculateGraphBoundingBox(regions);
         const scale = Math.min(
-            (ctx.canvas.width * 0.8) / (boundingBox.maxX - boundingBox.minX),
-            (ctx.canvas.height * 0.8) / (boundingBox.maxY - boundingBox.minY)
+            (ctx.canvas.width * 0.7) / (boundingBox.maxX - boundingBox.minX),
+            (ctx.canvas.height * 0.7) / (boundingBox.maxY - boundingBox.minY)
         );
         
         // Draw edges first
@@ -369,7 +368,7 @@ class VennGame {
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
         
-        // Draw edges between all pairs of regions that are adjacent
+        // Draw edges between regions that share circles
         for (let i = 0; i < regions.length; i++) {
             for (let j = i + 1; j < regions.length; j++) {
                 if (this.areRegionsAdjacent(regions[i].label, regions[j].label)) {
@@ -381,7 +380,7 @@ class VennGame {
             }
         }
         ctx.stroke();
-    
+
         // Draw nodes
         regions.forEach(region => {
             const pos = this.scalePosition(region.center, boundingBox, scale);
@@ -402,6 +401,26 @@ class VennGame {
         });
     }
 
+    calculateGraphBoundingBox(regions) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        regions.forEach(region => {
+            minX = Math.min(minX, region.center.x);
+            minY = Math.min(minY, region.center.y);
+            maxX = Math.max(maxX, region.center.x);
+            maxY = Math.max(maxY, region.center.y);
+        });
+        
+        // Add more padding for better spacing
+        const padding = Math.max(maxX - minX, maxY - minY) * 0.3;
+        return {
+            minX: minX - padding,
+            minY: minY - padding,
+            maxX: maxX + padding,
+            maxY: maxY + padding
+        };
+    }
+
     scalePosition(pos, boundingBox, scale) {
         return {
             x: (pos.x - boundingBox.minX) * scale + (this.currentGraphCanvas.width - 
@@ -412,30 +431,10 @@ class VennGame {
     }
 
     areRegionsAdjacent(label1, label2) {
-        // Get all circles involved in each region
-        const circles1 = label1.split('').map(l => this.circles.find(c => c.label === l));
-        const circles2 = label2.split('').map(l => this.circles.find(c => c.label === l));
-        
-        // Check if any circle from region1 is touching or overlapping any circle from region2
-        for (const circle1 of circles1) {
-            for (const circle2 of circles2) {
-                if (circle1 !== circle2 && (
-                    this.isCirclesTouching(circle1, circle2) || 
-                    this.hasOverlapArea(circle1, circle2)
-                )) {
-                    return true;
-                }
-            }
-        }
-        
-        // For compound regions, check if they share a circle
-        if (label1.length > 1 || label2.length > 1) {
-            const set1 = new Set(label1.split(''));
-            const set2 = new Set(label2.split(''));
-            return [...set1].some(circle => set2.has(circle));
-        }
-        
-        return false;
+        // For any regions, check if they share a circle
+        const set1 = new Set(label1.split(''));
+        const set2 = new Set(label2.split(''));
+        return [...set1].some(circle => set2.has(circle));
     }
 
     draw() {
