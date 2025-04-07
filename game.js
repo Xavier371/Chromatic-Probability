@@ -39,18 +39,19 @@ class VennGame {
         return dx * dx + dy * dy <= circle.radius * circle.radius;
     }
 
-    isCirclesTouching(circle1, circle2) {
+   isCirclesTouching(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance <= (circle1.radius + circle2.radius);
+        return Math.abs(distance - (circle1.radius + circle2.radius)) < 5;
     }
 
     hasOverlapArea(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < (circle1.radius + circle2.radius);
+        // More significant overlap needed to create a region
+        return distance < (circle1.radius + circle2.radius - 10);
     }
 
     hasTripleOverlap(circles) {
@@ -186,19 +187,17 @@ class VennGame {
 
         document.getElementById('resetButton').addEventListener('click', () => this.resetGame());
     }
-        getRegions(circles) {
+    getRegions(circles) {
         const regions = [];
-        const labels = ['A', 'B', 'C'];
-
-        // Single circle regions
-        circles.forEach((circle, i) => {
-            const label = labels[i];
-            const center = this.calculateRegionCenter([circle], circles);
-            if (center) {
-                regions.push({ label, center });
-            }
+        
+        // Always add single circle regions (A, B, C)
+        circles.forEach(circle => {
+            regions.push({
+                label: circle.label,
+                center: { x: circle.x, y: circle.y }
+            });
         });
-
+    
         // Two circle intersections
         const pairs = [['A', 'B'], ['B', 'C'], ['A', 'C']];
         pairs.forEach(([label1, label2]) => {
@@ -211,7 +210,7 @@ class VennGame {
                 }
             }
         });
-
+    
         // Three circle intersection
         if (this.hasTripleOverlap(circles)) {
             const center = this.calculateRegionCenter(circles, circles);
@@ -219,7 +218,7 @@ class VennGame {
                 regions.push({ label: 'ABC', center });
             }
         }
-
+    
         return regions;
     }
 
@@ -342,7 +341,7 @@ class VennGame {
         this.handleMouseUp();
     }
     
-        drawCircle(ctx, circle) {
+    drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
         ctx.fillStyle = 'white';
@@ -431,41 +430,91 @@ class VennGame {
     }
 
     areRegionsAdjacent(label1, label2) {
-        // For any regions, check if they share a circle
+        // Get the circles involved
+        const circles1 = label1.split('').map(l => this.circles.find(c => c.label === l));
+        const circles2 = label2.split('').map(l => this.circles.find(c => c.label === l));
+    
+        // For single circles, check both touching and overlap
+        if (label1.length === 1 && label2.length === 1) {
+            return this.isCirclesTouching(circles1[0], circles2[0]) || 
+                   this.hasOverlapArea(circles1[0], circles2[0]);
+        }
+    
+        // For regions with a shared circle, they're adjacent
         const set1 = new Set(label1.split(''));
         const set2 = new Set(label2.split(''));
         return [...set1].some(circle => set2.has(circle));
     }
 
-    draw() {
+   draw() {
         const vennCtx = this.vennCanvas.getContext('2d');
         const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         const targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-
+    
         // Clear canvases
         vennCtx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
         currentGraphCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
         targetGraphCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
-
-        // Draw Venn diagram
+    
+        // Draw Venn diagram circles
         this.circles.forEach(circle => this.drawCircle(vennCtx, circle));
         
         // Draw region labels
         const regions = this.getRegions(this.circles);
         regions.forEach(region => {
-            vennCtx.fillStyle = 'black';
-            vennCtx.font = 'bold 16px Arial';
-            vennCtx.textAlign = 'center';
-            vennCtx.textBaseline = 'middle';
-            vennCtx.fillText(region.label, region.center.x, region.center.y);
+            // Skip drawing single circle labels at circle centers
+            if (region.label.length > 1) {
+                vennCtx.fillStyle = 'black';
+                vennCtx.font = 'bold 16px Arial';
+                vennCtx.textAlign = 'center';
+                vennCtx.textBaseline = 'middle';
+                vennCtx.fillText(region.label, region.center.x, region.center.y);
+            }
         });
-
+    
+        // Draw single circle labels (A, B, C) in their non-overlapping areas
+        this.circles.forEach(circle => {
+            const labelPos = this.calculateNonOverlappingCenter([circle], this.circles);
+            if (labelPos) {
+                vennCtx.fillStyle = 'black';
+                vennCtx.font = 'bold 16px Arial';
+                vennCtx.textAlign = 'center';
+                vennCtx.textBaseline = 'middle';
+                vennCtx.fillText(circle.label, labelPos.x, labelPos.y);
+            }
+        });
+    
         // Draw graphs
         this.drawGraph(currentGraphCtx, this.circles);
         this.drawGraph(targetGraphCtx, this.targetCircles);
-
+    
         // Check win condition
         this.checkWinCondition();
+    }
+    calculateNonOverlappingCenter(regionCircles, allCircles) {
+        const points = this.generatePointGrid(regionCircles[0]);
+        let validPoints = points.filter(point => {
+            // Point must be inside the main circle
+            const inMainCircle = this.isPointInCircle(point, regionCircles[0]);
+            
+            // Point must be outside all other circles
+            const outsideOtherCircles = allCircles
+                .filter(c => c !== regionCircles[0])
+                .every(circle => !this.isPointInCircle(point, circle));
+            
+            return inMainCircle && outsideOtherCircles;
+        });
+    
+        if (validPoints.length === 0) {
+            // If no non-overlapping area found, return the circle's center
+            return { x: regionCircles[0].x, y: regionCircles[0].y };
+        }
+    
+        // Calculate center of mass of valid points
+        const centerX = validPoints.reduce((sum, p) => sum + p.x, 0) / validPoints.length;
+        const centerY = validPoints.reduce((sum, p) => sum + p.y, 0) / validPoints.length;
+        
+        return { x: centerX, y: centerY };
     }
 
     checkWinCondition() {
