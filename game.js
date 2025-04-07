@@ -4,6 +4,9 @@ class VennGame {
     constructor() {
         console.log('VennGame constructor called');
         
+        // Add debug mode
+        this.debug = false;
+        
         // Canvas setup with error checking
         this.vennCanvas = document.getElementById('vennCanvas');
         this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
@@ -30,34 +33,10 @@ class VennGame {
         // Generate target configuration first
         this.targetCircles = this.generateRandomConfiguration();
     
-        // Calculate initial circle parameters
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const offset = baseRadius * 0.7; // Offset for overlap
-        const angleStep = (2 * Math.PI) / 3;
-    
-        // Initialize circles in an equilateral triangle formation with overlap
-        this.circles = [
-            { 
-                x: centerX + offset * Math.cos(0), 
-                y: centerY + offset * Math.sin(0), 
-                radius: baseRadius, 
-                label: 'A' 
-            },
-            { 
-                x: centerX + offset * Math.cos(angleStep), 
-                y: centerY + offset * Math.sin(angleStep), 
-                radius: baseRadius, 
-                label: 'B' 
-            },
-            { 
-                x: centerX + offset * Math.cos(2 * angleStep), 
-                y: centerY + offset * Math.sin(2 * angleStep), 
-                radius: baseRadius, 
-                label: 'C' 
-            }
-        ];
+        // Generate a different initial configuration
+        do {
+            this.circles = this.generateRandomConfiguration();
+        } while (this.areConfigurationsSimilar(this.circles, this.targetCircles));
     
         // Initialize interaction states
         this.selectedCircle = null;
@@ -71,16 +50,66 @@ class VennGame {
             this.draw();
         });
     
-        // Initialize controls and draw
+        // Initialize controls
         this.initializeControls();
         
         // Hide win message if visible
-        document.getElementById('winMessage').classList.add('hidden');
+        const winMessage = document.getElementById('winMessage');
+        if (winMessage) {
+            winMessage.classList.add('hidden');
+        }
         
         // Initial draw
         this.draw();
     
-        console.log('Constructor completed, game initialized');
+        if (this.debug) {
+            console.log('Initial circles:', this.circles);
+            console.log('Target circles:', this.targetCircles);
+        }
+    }
+    
+    // Helper method to check if configurations are too similar
+    areConfigurationsSimilar(config1, config2) {
+        if (!config1 || !config2) return false;
+        
+        const threshold = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 8;
+        const radiusThreshold = threshold / 2;
+        
+        for (let i = 0; i < 3; i++) {
+            const dx = config1[i].x - config2[i].x;
+            const dy = config1[i].y - config2[i].y;
+            const dr = Math.abs(config1[i].radius - config2[i].radius);
+            
+            // Check if positions and radii are too similar
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < threshold && dr < radiusThreshold) {
+                if (this.debug) {
+                    console.log(`Configurations too similar at circle ${i}:`, {
+                        distance,
+                        radiusDiff: dr,
+                        threshold,
+                        radiusThreshold
+                    });
+                }
+                return true;
+            }
+        }
+        
+        // Check if the overall patterns are too similar
+        const regions1 = this.getRegions(config1);
+        const regions2 = this.getRegions(config2);
+        if (regions1.length === regions2.length) {
+            const labels1 = new Set(regions1.map(r => r.label));
+            const labels2 = new Set(regions2.map(r => r.label));
+            if ([...labels1].every(label => labels2.has(label))) {
+                if (this.debug) {
+                    console.log('Configurations have identical region patterns');
+                }
+                return true;
+            }
+        }
+        
+        return false;
     }
    
     resizeCanvases() {
@@ -153,27 +182,22 @@ class VennGame {
     generateRandomConfiguration() {
         const centerX = this.targetGraphCanvas.width / 2;
         const centerY = this.targetGraphCanvas.height / 2;
-        const baseRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 5;
+        const minRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 6;
+        const maxRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 4;
         
-        // Tighter constraints for better overlap
-        const minOffset = baseRadius * 0.6;  // Increased minimum distance
-        const maxOffset = baseRadius * 0.8;  // Decreased maximum distance
-        const minRadius = baseRadius * 0.9;  // More consistent radius
-        const maxRadius = baseRadius * 1.1;  // More consistent radius
+        // Generate three random positions within the canvas bounds
+        const positions = Array(3).fill().map(() => ({
+            x: centerX + (Math.random() - 0.5) * this.targetGraphCanvas.width * 0.5,
+            y: centerY + (Math.random() - 0.5) * this.targetGraphCanvas.height * 0.5,
+            radius: minRadius + Math.random() * (maxRadius - minRadius)
+        }));
     
-        // More controlled angle distribution
-        const baseAngles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
-        const angles = baseAngles.map(angle => angle + (Math.random() - 0.5) * Math.PI / 6);
-    
-        return angles.map((angle, i) => {
-            const offset = minOffset + Math.random() * (maxOffset - minOffset);
-            return {
-                x: centerX + offset * Math.cos(angle),
-                y: centerY + offset * Math.sin(angle),
-                radius: minRadius + Math.random() * (maxRadius - minRadius),
-                label: ['A', 'B', 'C'][i]
-            };
-        });
+        return positions.map((pos, i) => ({
+            x: pos.x,
+            y: pos.y,
+            radius: pos.radius,
+            label: ['A', 'B', 'C'][i]
+        }));
     }
     getMousePos(e) {
         const rect = this.vennCanvas.getBoundingClientRect();
@@ -260,7 +284,7 @@ class VennGame {
     drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Make circles translucent
         ctx.fill();
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
@@ -456,10 +480,14 @@ class VennGame {
         console.log('Node positions:', Object.fromEntries(nodePositions));
     }
 }
-
+    
    areRegionsAdjacent(label1, label2) {
-        // Two regions are adjacent if they differ by exactly one character
-        // or if one is a subset of the other and they differ by one character
+        // Single letter regions are always adjacent
+        if (label1.length === 1 && label2.length === 1) {
+            return true;
+        }
+        
+        // For other cases, check if they differ by exactly one character
         const set1 = new Set(label1.split(''));
         const set2 = new Set(label2.split(''));
         
@@ -471,7 +499,6 @@ class VennGame {
             }
         }
         
-        // Regions are adjacent if symmetric difference is 1
         return diff.size === 1;
     }
     
