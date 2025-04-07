@@ -45,34 +45,29 @@ class VennGame {
     }
 
     resizeCanvases() {
-        // Get container dimensions
-        const vennContainer = this.vennCanvas.parentElement;
-        const graphsContainer = this.currentGraphCanvas.parentElement;
-
-        // Set canvas sizes based on their containers
-        this.vennCanvas.width = vennContainer.offsetWidth;
-        this.vennCanvas.height = vennContainer.offsetHeight;
-
-        this.currentGraphCanvas.width = graphsContainer.offsetWidth;
-        this.currentGraphCanvas.height = (graphsContainer.offsetHeight - 20) / 2;
-
-        this.targetGraphCanvas.width = graphsContainer.offsetWidth;
-        this.targetGraphCanvas.height = (graphsContainer.offsetHeight - 20) / 2;
-
+        // Set fixed sizes for the canvases
+        this.vennCanvas.width = this.vennCanvas.offsetWidth;
+        this.vennCanvas.height = this.vennCanvas.offsetHeight;
+    
+        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
+        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
+    
+        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
+        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
+    
         // Adjust initial circle positions based on new canvas size
         if (!this.targetCircles) {
             const centerX = this.vennCanvas.width / 2;
             const centerY = this.vennCanvas.height / 2;
-            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
-
+            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5; // Slightly larger circles
+    
             this.circles = [
                 { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
                 { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
                 { x: centerX, y: centerY + baseRadius, radius: baseRadius, label: 'C' }
             ];
         }
-
-        // Force redraw
+    
         this.draw();
     }
 
