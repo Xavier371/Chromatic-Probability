@@ -1,13 +1,23 @@
+console.log('Game script loaded');
+
 class VennGame {
     constructor() {
-        // Canvas setup
+        console.log('VennGame constructor called');
+        
+        // Canvas setup with error checking
         this.vennCanvas = document.getElementById('vennCanvas');
         this.currentGraphCanvas = document.getElementById('currentGraph');
         this.targetGraphCanvas = document.getElementById('targetGraph');
         
+        if (!this.vennCanvas || !this.currentGraphCanvas || !this.targetGraphCanvas) {
+            console.error('Could not find one or more canvas elements');
+            return;
+        }
+        
         this.vennCtx = this.vennCanvas.getContext('2d');
         this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
+            
 
         // Set canvas sizes
         this.resizeCanvases();
