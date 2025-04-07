@@ -282,39 +282,54 @@ class VennGame {
         return regions;
     }
 
-    drawGraph(ctx, circles) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+   drawGraph(ctx, circles) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    const regions = this.getRegions(circles);
+    const nodes = new Map();
+
+    // Scale factors for the graph
+    const scaleX = ctx.canvas.width / this.vennCanvas.width;
+    const scaleY = ctx.canvas.height / this.vennCanvas.height;
+    const scale = Math.min(scaleX, scaleY);
+
+    // Center offset for the graph
+    const offsetX = (ctx.canvas.width - this.vennCanvas.width * scale) / 2;
+    const offsetY = (ctx.canvas.height - this.vennCanvas.height * scale) / 2;
+
+    // Draw nodes
+    regions.forEach(region => {
+        const x = region.center.x * scale + offsetX;
+        const y = region.center.y * scale + offsetY;
         
-        const regions = this.getRegions(circles);
-        const nodes = new Map();
+        nodes.set(region.label, { x, y });
 
-        // Draw nodes
-        regions.forEach(region => {
-            const x = region.center.x * (ctx.canvas.width / this.vennCanvas.width);
-            const y = region.center.y * (ctx.canvas.height / this.vennCanvas.height);
-            
-            nodes.set(region.label, { x, y });
-
-            ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
-            ctx.fillStyle = 'black';
-            ctx.fill();
-
-            ctx.fillText(region.label, x + 10, y);
-        });
-
-        // Draw edges
         ctx.beginPath();
-        nodes.forEach((node1, label1) => {
-            nodes.forEach((node2, label2) => {
-                if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
-                    ctx.moveTo(node1.x, node1.y);
-                    ctx.lineTo(node2.x, node2.y);
-                }
-            });
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+
+        // Draw labels with better positioning
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(region.label, x + 8, y);
+    });
+
+    // Draw edges
+    ctx.beginPath();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    nodes.forEach((node1, label1) => {
+        nodes.forEach((node2, label2) => {
+            if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
+                ctx.moveTo(node1.x, node1.y);
+                ctx.lineTo(node2.x, node2.y);
+            }
         });
-        ctx.stroke();
-    }
+    });
+    ctx.stroke();
+}
 
     areRegionsAdjacent(label1, label2) {
         // Define adjacency rules
