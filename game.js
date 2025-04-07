@@ -1,102 +1,78 @@
-console.log('Game script loaded');
-
 class VennGame {
     constructor() {
         console.log('VennGame constructor called');
         
-        this.debug = false;
-        
-        // Canvas setup
+        // Get canvas elements
         this.vennCanvas = document.getElementById('vennCanvas');
         this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
         this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
         
         if (!this.vennCanvas || !this.currentGraphCanvas || !this.targetGraphCanvas) {
-            console.error('Could not find one or more canvas elements');
+            console.error('Canvas elements not found');
             return;
         }
-        
-        // Get canvas contexts
-        this.vennCtx = this.vennCanvas.getContext('2d');
-        this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
-        this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
 
-        // Set initial canvas sizes
-        this.vennCanvas.width = this.vennCanvas.offsetWidth;
-        this.vennCanvas.height = this.vennCanvas.offsetHeight;
-        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
-        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
-        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
-        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
-
-        // Generate target configuration first (different from initial)
-        do {
-            this.targetCircles = this.generateRandomConfiguration();
-        } while (!this.isValidTargetConfiguration(this.targetCircles));
-
-        // Initialize with perfect overlap
-        this.initializeDefaultCircles();
-
-        // Initialize interaction states
+        // Initialize game state
+        this.circles = [];
+        this.targetCircles = [];
         this.selectedCircle = null;
-        this.isDragging = false;
-        this.isScaling = false;
-        this.lastMousePos = { x: 0, y: 0 };
+        this.dragOffset = { x: 0, y: 0 };
+        this.scaling = false;
 
-        // Setup event listeners and controls
-        window.addEventListener('resize', () => {
-            this.resizeCanvases();
-            this.draw();
-        });
-
+        // Set up event listeners
         this.initializeControls();
         
-        // Hide win message
-        const winMessage = document.getElementById('winMessage');
-        if (winMessage) {
-            winMessage.classList.add('hidden');
-        }
+        // Generate initial target configuration
+        this.targetCircles = this.generateRandomConfiguration();
         
-        this.draw();
+        // Initialize default circles
+        this.initializeDefaultCircles();
+        
+        // Initial draw
+        this.resizeCanvases();
     }
 
-    // Geometric helper functions
+    // Helper functions for geometric calculations
+    isPointInCircle(point, circle) {
+        const dx = point.x - circle.x;
+        const dy = point.y - circle.y;
+        return dx * dx + dy * dy <= circle.radius * circle.radius;
+    }
+
     isCirclesTouching(circle1, circle2) {
-        const dx = circle2.x - circle1.x;
-        const dy = circle2.y - circle1.y;
+        const dx = circle1.x - circle2.x;
+        const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const sumRadii = circle1.radius + circle2.radius;
-        
-        // Check if circles are touching or overlapping
-        const epsilon = 0.1;
-        return distance <= sumRadii + epsilon;
+        return Math.abs(distance - (circle1.radius + circle2.radius)) < 5;
     }
 
     hasOverlapArea(circle1, circle2) {
-        const dx = circle2.x - circle1.x;
-        const dy = circle2.y - circle1.y;
+        const dx = circle1.x - circle2.x;
+        const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Must have real overlap area, not just touching
-        return distance < circle1.radius + circle2.radius - 0.1;
+        return distance < (circle1.radius + circle2.radius);
     }
 
-    isCircleInside(circle1, circle2) {
-        const dx = circle2.x - circle1.x;
-        const dy = circle2.y - circle1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        return distance + Math.min(circle1.radius, circle2.radius) <= Math.max(circle1.radius, circle2.radius);
+    hasTripleOverlap(circles) {
+        return circles.every((circle1, i) => 
+            circles.slice(i + 1).every(circle2 => 
+                this.hasOverlapArea(circle1, circle2)
+            )
+        );
     }
 
     isValidTargetConfiguration(circles) {
-        if (!circles) return false;
-        
-        // Must be different from perfect overlap
-        const perfectOverlap = this.getRegions(this.circles).map(r => r.label).sort().join(',');
-        const targetOverlap = this.getRegions(circles).map(r => r.label).sort().join(',');
-        
-        return perfectOverlap !== targetOverlap;
+        // Check if at least two circles are touching or overlapping
+        let touchingCount = 0;
+        for (let i = 0; i < circles.length; i++) {
+            for (let j = i + 1; j < circles.length; j++) {
+                if (this.isCirclesTouching(circles[i], circles[j]) || 
+                    this.hasOverlapArea(circles[i], circles[j])) {
+                    touchingCount++;
+                }
+            }
+        }
+        return touchingCount >= 1; // At least one pair of circles should be touching/overlapping
     }
         initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
