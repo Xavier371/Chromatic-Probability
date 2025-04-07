@@ -5,7 +5,6 @@ class VennGame {
         console.log('VennGame constructor called');
         
         // Canvas setup with error checking
-        // Canvas setup with error checking
         this.vennCanvas = document.getElementById('vennCanvas');
         this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
         this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
@@ -15,71 +14,86 @@ class VennGame {
             return;
         }
         
+        // Get canvas contexts
         this.vennCtx = this.vennCanvas.getContext('2d');
         this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-
-        // Game state
+    
+        // Set initial canvas sizes
+        this.vennCanvas.width = this.vennCanvas.offsetWidth;
+        this.vennCanvas.height = this.vennCanvas.offsetHeight;
+        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
+        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
+        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
+        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
+    
+        // Generate target configuration first
+        this.targetCircles = this.generateRandomConfiguration();
+    
+        // Calculate initial circle parameters
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+        const offset = baseRadius * 0.7; // Offset for overlap
+        const angleStep = (2 * Math.PI) / 3;
+    
+        // Initialize circles in an equilateral triangle formation with overlap
         this.circles = [
-            { x: 0, y: 0, radius: 80, label: 'A' },
-            { x: 0, y: 0, radius: 80, label: 'B' },
-            { x: 0, y: 0, radius: 80, label: 'C' }
+            { 
+                x: centerX + offset * Math.cos(0), 
+                y: centerY + offset * Math.sin(0), 
+                radius: baseRadius, 
+                label: 'A' 
+            },
+            { 
+                x: centerX + offset * Math.cos(angleStep), 
+                y: centerY + offset * Math.sin(angleStep), 
+                radius: baseRadius, 
+                label: 'B' 
+            },
+            { 
+                x: centerX + offset * Math.cos(2 * angleStep), 
+                y: centerY + offset * Math.sin(2 * angleStep), 
+                radius: baseRadius, 
+                label: 'C' 
+            }
         ];
-        
-        this.targetCircles = null;
+    
+        // Initialize interaction states
         this.selectedCircle = null;
         this.isDragging = false;
         this.isScaling = false;
         this.lastMousePos = { x: 0, y: 0 };
-
-        // Set canvas sizes and initialize
-        this.resizeCanvases();
-        window.addEventListener('resize', () => this.resizeCanvases());
+    
+        // Add event listeners
+        window.addEventListener('resize', () => {
+            this.resizeCanvases();
+            this.draw();
+        });
+    
+        // Initialize controls and draw
         this.initializeControls();
-        this.resetGame();
+        
+        // Hide win message if visible
+        document.getElementById('winMessage').classList.add('hidden');
+        
+        // Initial draw
+        this.draw();
+    
+        console.log('Constructor completed, game initialized');
     }
    
     resizeCanvases() {
-        // Set fixed sizes for the canvases
-        this.vennCanvas.width = this.vennCanvas.offsetWidth;
-        this.vennCanvas.height = this.vennCanvas.offsetHeight;
+        const setCanvasSize = (canvas) => {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            canvas.style.width = canvas.offsetWidth + 'px';
+            canvas.style.height = canvas.offsetHeight + 'px';
+        };
     
-        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
-        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
-    
-        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
-        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
-    
-        // Adjust initial circle positions based on new canvas size
-        if (!this.targetCircles) {
-            const centerX = this.vennCanvas.width / 2;
-            const centerY = this.vennCanvas.height / 2;
-            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-            const offset = baseRadius * 0.7; // Smaller offset ensures overlap
-    
-            // Position circles in an equilateral triangle formation
-            const angleStep = (2 * Math.PI) / 3;
-            this.circles = [
-                { 
-                    x: centerX + offset * Math.cos(0), 
-                    y: centerY + offset * Math.sin(0), 
-                    radius: baseRadius, 
-                    label: 'A' 
-                },
-                { 
-                    x: centerX + offset * Math.cos(angleStep), 
-                    y: centerY + offset * Math.sin(angleStep), 
-                    radius: baseRadius, 
-                    label: 'B' 
-                },
-                { 
-                    x: centerX + offset * Math.cos(2 * angleStep), 
-                    y: centerY + offset * Math.sin(2 * angleStep), 
-                    radius: baseRadius, 
-                    label: 'C' 
-                }
-            ];
-        }
+        setCanvasSize(this.vennCanvas);
+        setCanvasSize(this.currentGraphCanvas);
+        setCanvasSize(this.targetGraphCanvas);
     
         this.draw();
     }
@@ -137,33 +151,30 @@ class VennGame {
 }
     
     generateRandomConfiguration() {
-    const centerX = this.targetGraphCanvas.width / 2;
-    const centerY = this.targetGraphCanvas.height / 2;
-    const baseRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 4;
+        const centerX = this.targetGraphCanvas.width / 2;
+        const centerY = this.targetGraphCanvas.height / 2;
+        const baseRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 5;
+        
+        // Tighter constraints for better overlap
+        const minOffset = baseRadius * 0.6;  // Increased minimum distance
+        const maxOffset = baseRadius * 0.8;  // Decreased maximum distance
+        const minRadius = baseRadius * 0.9;  // More consistent radius
+        const maxRadius = baseRadius * 1.1;  // More consistent radius
     
-    // Generate a configuration that ensures overlap
-    const minOffset = baseRadius * 0.5;  // Minimum distance from center
-    const maxOffset = baseRadius * 1.2;  // Maximum distance from center
-    const minRadius = baseRadius * 0.8;  // Minimum circle radius
-    const maxRadius = baseRadius * 1.2;  // Maximum circle radius
-
-    // Generate three angles with some randomness but maintaining rough triangle formation
-    const angles = [
-        Math.random() * Math.PI / 3,
-        Math.PI * (2/3) + Math.random() * Math.PI / 3,
-        Math.PI * (4/3) + Math.random() * Math.PI / 3
-    ];
-
-    return angles.map((angle, i) => {
-        const offset = minOffset + Math.random() * (maxOffset - minOffset);
-        return {
-            x: centerX + offset * Math.cos(angle),
-            y: centerY + offset * Math.sin(angle),
-            radius: minRadius + Math.random() * (maxRadius - minRadius),
-            label: ['A', 'B', 'C'][i]
-        };
-    });
-}
+        // More controlled angle distribution
+        const baseAngles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
+        const angles = baseAngles.map(angle => angle + (Math.random() - 0.5) * Math.PI / 6);
+    
+        return angles.map((angle, i) => {
+            const offset = minOffset + Math.random() * (maxOffset - minOffset);
+            return {
+                x: centerX + offset * Math.cos(angle),
+                y: centerY + offset * Math.sin(angle),
+                radius: minRadius + Math.random() * (maxRadius - minRadius),
+                label: ['A', 'B', 'C'][i]
+            };
+        });
+    }
     getMousePos(e) {
         const rect = this.vennCanvas.getBoundingClientRect();
         return {
@@ -344,80 +355,107 @@ class VennGame {
     return regions;
 }
 
-   drawGraph(ctx, circles) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
-        const regions = this.getRegions(circles);
-        const nodeRadius = 25;
-        
-        // Calculate the bounding box of the Venn diagram
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        circles.forEach(circle => {
-            minX = Math.min(minX, circle.x - circle.radius);
-            maxX = Math.max(maxX, circle.x + circle.radius);
-            minY = Math.min(minY, circle.y - circle.radius);
-            maxY = Math.max(maxY, circle.y + circle.radius);
-        });
-        
-        const vennWidth = maxX - minX;
-        const vennHeight = maxY - minY;
-        
-        // Scale factor to fit in canvas while spacing out nodes
-        const scaleX = (ctx.canvas.width - 4 * nodeRadius) / vennWidth;
-        const scaleY = (ctx.canvas.height - 4 * nodeRadius) / vennHeight;
-        const scale = Math.min(scaleX, scaleY) * 0.8; // 80% of available space
-        
-        const nodePositions = new Map();
-        
-        // Position nodes based on their centers in the Venn diagram
-        regions.forEach(region => {
-            const x = ctx.canvas.width/2 + (region.center.x - (minX + vennWidth/2)) * scale;
-            const y = ctx.canvas.height/2 + (region.center.y - (minY + vennHeight/2)) * scale;
-            nodePositions.set(region.label, { x, y });
-        });
+  drawGraph(ctx, circles) {
+    if (!circles) return; // Guard clause for null circles
+
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
-        // Draw edges first
-        ctx.beginPath();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        
-        nodePositions.forEach((pos1, label1) => {
-            nodePositions.forEach((pos2, label2) => {
-                if (label1 < label2 && (
-                    this.areRegionsAdjacent(label1, label2) ||
-                    (label2 === 'ABC' && label1.length === 1) ||
-                    (label1 === 'ABC' && label2.length === 1)
-                )) {
-                    const angle = Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x);
-                    const startX = pos1.x + nodeRadius * Math.cos(angle);
-                    const startY = pos1.y + nodeRadius * Math.sin(angle);
-                    const endX = pos2.x - nodeRadius * Math.cos(angle);
-                    const endY = pos2.y - nodeRadius * Math.sin(angle);
-                    
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(endX, endY);
-                }
+    const regions = this.getRegions(circles);
+    const nodeRadius = 20; // Slightly smaller for better spacing
+    
+    // Calculate canvas center and layout radius
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
+    const layoutRadius = Math.min(ctx.canvas.width, ctx.canvas.height) / 3;
+    
+    const nodePositions = new Map();
+    
+    // Calculate positions for all nodes
+    // 1. Position single-letter nodes (A, B, C) in a triangle
+    const singleNodes = regions.filter(r => r.label.length === 1);
+    singleNodes.forEach((region, i) => {
+        const angle = (i * 2 * Math.PI / 3) - Math.PI / 2; // Start from top
+        nodePositions.set(region.label, {
+            x: centerX + layoutRadius * Math.cos(angle),
+            y: centerY + layoutRadius * Math.sin(angle)
+        });
+    });
+    
+    // 2. Position double-letter nodes (AB, BC, AC) between their parents
+    const doubleNodes = regions.filter(r => r.label.length === 2);
+    doubleNodes.forEach(region => {
+        const [c1, c2] = region.label.split('');
+        const pos1 = nodePositions.get(c1);
+        const pos2 = nodePositions.get(c2);
+        if (pos1 && pos2) {
+            // Position halfway between parent nodes, but slightly closer to center
+            const midX = (pos1.x + pos2.x) / 2;
+            const midY = (pos1.y + pos2.y) / 2;
+            // Pull towards center by 20%
+            nodePositions.set(region.label, {
+                x: midX + (centerX - midX) * 0.2,
+                y: midY + (centerY - midY) * 0.2
             });
-        });
-        ctx.stroke();
+        }
+    });
     
-        // Draw nodes
-        nodePositions.forEach((pos, label) => {
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#2196F3';
-            ctx.fill();
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-    
-            ctx.fillStyle = 'white';
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(label, pos.x, pos.y);
-        });
+    // 3. Position triple-letter node (ABC) in center
+    const tripleNode = regions.find(r => r.label.length === 3);
+    if (tripleNode) {
+        nodePositions.set(tripleNode.label, { x: centerX, y: centerY });
     }
+
+    // Draw edges first (so they appear behind nodes)
+    ctx.beginPath();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    
+    // Draw edges between adjacent nodes
+    nodePositions.forEach((pos1, label1) => {
+        nodePositions.forEach((pos2, label2) => {
+            if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
+                // Calculate angle for proper edge connection to node circumference
+                const angle = Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x);
+                
+                // Start and end points adjusted to node boundaries
+                const startX = pos1.x + nodeRadius * Math.cos(angle);
+                const startY = pos1.y + nodeRadius * Math.sin(angle);
+                const endX = pos2.x - nodeRadius * Math.cos(angle);
+                const endY = pos2.y - nodeRadius * Math.sin(angle);
+                
+                // Draw the edge
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+            }
+        });
+    });
+    ctx.stroke();
+
+    // Draw nodes
+    nodePositions.forEach((pos, label) => {
+        // Draw node circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#2196F3'; // Blue color for nodes
+        ctx.fill();
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw label
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, pos.x, pos.y);
+    });
+
+    // Optional: Add debug information
+    if (this.debug) {
+        console.log('Regions drawn:', regions.map(r => r.label));
+        console.log('Node positions:', Object.fromEntries(nodePositions));
+    }
+}
 
    areRegionsAdjacent(label1, label2) {
         // Two regions are adjacent if they differ by exactly one character
