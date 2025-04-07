@@ -5,9 +5,10 @@ class VennGame {
         console.log('VennGame constructor called');
         
         // Canvas setup with error checking
+        // Canvas setup with error checking
         this.vennCanvas = document.getElementById('vennCanvas');
-        this.currentGraphCanvas = document.getElementById('currentGraph');
-        this.targetGraphCanvas = document.getElementById('targetGraph');
+        this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
+        this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
         
         if (!this.vennCanvas || !this.currentGraphCanvas || !this.targetGraphCanvas) {
             console.error('Could not find one or more canvas elements');
@@ -15,8 +16,8 @@ class VennGame {
         }
         
         this.vennCtx = this.vennCanvas.getContext('2d');
-        this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
-        this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
+        this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
+        this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
 
         // Game state
         this.circles = [
@@ -37,7 +38,7 @@ class VennGame {
         this.initializeControls();
         this.resetGame();
     }
-
+   
     resizeCanvases() {
     // Set fixed sizes for the canvases
     this.vennCanvas.width = this.vennCanvas.offsetWidth;
@@ -67,54 +68,69 @@ class VennGame {
 }
     
     resetGame() {
-        // Generate random target configuration
-        this.targetCircles = this.generateRandomConfiguration();
-        
-        // Reset current circles to default positions
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+    // Generate random target configuration
+    this.targetCircles = this.generateRandomConfiguration();
     
-        this.circles = [
-            { x: centerX - baseRadius/2, y: centerY - baseRadius/2, radius: baseRadius, label: 'A' },
-            { x: centerX + baseRadius/2, y: centerY - baseRadius/2, radius: baseRadius, label: 'B' },
-            { x: centerX, y: centerY + baseRadius/2, radius: baseRadius, label: 'C' }
-        ];
-    
-        document.getElementById('winMessage').classList.add('hidden');
-        this.draw();
-    }
+    // Reset current circles to default positions
+    const centerX = this.vennCanvas.width / 2;
+    const centerY = this.vennCanvas.height / 2;
+    const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
+    const spacing = baseRadius * 1.2; // Match spacing from resizeCanvases
+
+    this.circles = [
+        { x: centerX - spacing, y: centerY - spacing/2, radius: baseRadius, label: 'A' },
+        { x: centerX + spacing, y: centerY - spacing/2, radius: baseRadius, label: 'B' },
+        { x: centerX, y: centerY + spacing, radius: baseRadius, label: 'C' }
+    ];
+
+    document.getElementById('winMessage').classList.add('hidden');
+    this.draw();
+}
+    initializeControls() {
+    // Mouse events for Venn diagram
+    this.vennCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    this.vennCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.vennCanvas.addEventListener('mouseup', () => this.handleMouseUp());
+    this.vennCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
+
+    // Touch events for mobile
+    this.vennCanvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+    this.vennCanvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+    this.vennCanvas.addEventListener('touchend', () => this.handleTouchEnd());
+
+    // Reset button
+    document.getElementById('resetButton').addEventListener('click', () => this.resetGame());
+}
     
     generateRandomConfiguration() {
         const centerX = this.targetGraphCanvas.width / 2;
         const centerY = this.targetGraphCanvas.height / 2;
-        const baseRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 4;
-        
-        // Generate random offsets that ensure overlap
-        const maxOffset = baseRadius / 2;
-        
+        const minRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 8;  // Minimum circle size
+        const maxRadius = Math.min(this.targetGraphCanvas.width, this.targetGraphCanvas.height) / 4;  // Maximum circle size
+        const maxDistance = maxRadius * 1.5;  // Maximum distance from center for circle positions
+    
+        // Generate 3 circles with random sizes and positions
         return [
-            {
-                x: centerX - baseRadius/2 + (Math.random() - 0.5) * maxOffset,
-                y: centerY - baseRadius/2 + (Math.random() - 0.5) * maxOffset,
-                radius: baseRadius * (0.8 + Math.random() * 0.4),
+            {   // Circle A
+                x: centerX + (Math.random() * 2 - 1) * maxDistance,  // Random x within maxDistance of center
+                y: centerY + (Math.random() * 2 - 1) * maxDistance,  // Random y within maxDistance of center
+                radius: minRadius + Math.random() * (maxRadius - minRadius),  // Random radius between min and max
                 label: 'A'
             },
-            {
-                x: centerX + baseRadius/2 + (Math.random() - 0.5) * maxOffset,
-                y: centerY - baseRadius/2 + (Math.random() - 0.5) * maxOffset,
-                radius: baseRadius * (0.8 + Math.random() * 0.4),
+            {   // Circle B
+                x: centerX + (Math.random() * 2 - 1) * maxDistance,
+                y: centerY + (Math.random() * 2 - 1) * maxDistance,
+                radius: minRadius + Math.random() * (maxRadius - minRadius),
                 label: 'B'
             },
-            {
-                x: centerX + (Math.random() - 0.5) * maxOffset,
-                y: centerY + baseRadius/2 + (Math.random() - 0.5) * maxOffset,
-                radius: baseRadius * (0.8 + Math.random() * 0.4),
+            {   // Circle C
+                x: centerX + (Math.random() * 2 - 1) * maxDistance,
+                y: centerY + (Math.random() * 2 - 1) * maxDistance,
+                radius: minRadius + Math.random() * (maxRadius - minRadius),
                 label: 'C'
             }
         ];
     }
-
     getMousePos(e) {
         const rect = this.vennCanvas.getBoundingClientRect();
         return {
@@ -124,21 +140,29 @@ class VennGame {
     }
 
     handleMouseDown(e) {
-        const mousePos = this.getMousePos(e);
-        this.lastMousePos = mousePos;
-        
-        // Check if clicking on a circle
-        this.selectedCircle = this.circles.find(circle => 
-            Math.hypot(mousePos.x - circle.x, mousePos.y - circle.y) < circle.radius
-        );
+    const mousePos = this.getMousePos(e);
+    this.lastMousePos = mousePos;
+    
+    // Check if clicking near the edge of any circle first (for scaling)
+    this.selectedCircle = this.circles.find(circle => {
+        const distToCenter = Math.hypot(mousePos.x - circle.x, mousePos.y - circle.y);
+        return Math.abs(distToCenter - circle.radius) < 20;
+    });
 
-        if (this.selectedCircle) {
-            this.isDragging = true;
-            // If clicking near the edge, enable scaling
-            const distToCenter = Math.hypot(mousePos.x - this.selectedCircle.x, mousePos.y - this.selectedCircle.y);
-            this.isScaling = Math.abs(distToCenter - this.selectedCircle.radius) < 20;
-        }
+    if (this.selectedCircle) {
+        this.isScaling = true;
+        return;
     }
+
+    // If not scaling, check for dragging
+    this.selectedCircle = this.circles.find(circle => 
+        Math.hypot(mousePos.x - circle.x, mousePos.y - circle.y) < circle.radius
+    );
+
+    if (this.selectedCircle) {
+        this.isDragging = true;
+    }
+}
 
     handleMouseMove(e) {
         if (!this.selectedCircle) return;
@@ -313,9 +337,16 @@ class VennGame {
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 3; // Thicker edges
     
+   // In the drawGraph method, update the edge drawing section:
     nodePositions.forEach((pos1, label1) => {
         nodePositions.forEach((pos2, label2) => {
-            if (label1 < label2 && this.areRegionsAdjacent(label1, label2)) {
+            if (label1 < label2 && (
+                // Direct subset relationship
+                this.areRegionsAdjacent(label1, label2) ||
+                // Additional connections for ABC
+                (label2 === 'ABC' && label1.length === 1) ||
+                (label1 === 'ABC' && label2.length === 1)
+            )) {
                 // Calculate edge endpoints to avoid overlapping nodes
                 const angle = Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x);
                 const startX = pos1.x + nodeRadius * Math.cos(angle);
