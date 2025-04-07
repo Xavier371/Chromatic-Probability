@@ -17,23 +17,21 @@ h1 {
 
 .game-area {
     display: grid;
-    grid-template-columns: 600px 300px; /* Fixed widths for the columns */
+    grid-template-columns: 600px 300px;
     gap: 20px;
     margin: 20px auto;
-    justify-content: center; /* Center the grid in the container */
-}
-
-.venn-container {
-    width: 600px;  /* Fixed width */
-    height: 600px; /* Fixed height - makes it square */
-    display: flex;
-    align-items: center;
     justify-content: center;
+    height: 600px;
 }
 
-.graphs-container {
-    width: 300px;  /* Fixed width */
-    height: 600px; /* Same height as venn-container */
+.left-side {
+    width: 600px;
+    height: 600px;
+}
+
+.right-side {
+    width: 300px;
+    height: 600px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -52,7 +50,7 @@ canvas {
 
 #targetGraph, #currentGraph {
     width: 100%;
-    height: 290px; /* (600px - 20px gap) / 2 */
+    height: 290px;
 }
 
 .controls {
@@ -94,7 +92,7 @@ button:hover {
         grid-template-rows: auto auto;
     }
 
-    .venn-container, .graphs-container {
+    .left-side, .right-side {
         width: 100%;
         max-width: 600px;
         margin: 0 auto;
