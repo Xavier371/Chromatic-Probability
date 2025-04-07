@@ -40,32 +40,49 @@ class VennGame {
     }
    
     resizeCanvases() {
-    // Set fixed sizes for the canvases
-    this.vennCanvas.width = this.vennCanvas.offsetWidth;
-    this.vennCanvas.height = this.vennCanvas.offsetHeight;
-
-    this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
-    this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
-
-    this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
-    this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
-
-    // Adjust initial circle positions based on new canvas size
-    if (!this.targetCircles) {
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
-        const spacing = baseRadius * 1.2; // Increase spacing between circles
-
-        this.circles = [
-            { x: centerX - spacing, y: centerY - spacing/2, radius: baseRadius, label: 'A' },
-            { x: centerX + spacing, y: centerY - spacing/2, radius: baseRadius, label: 'B' },
-            { x: centerX, y: centerY + spacing, radius: baseRadius, label: 'C' }
-        ];
+        // Set fixed sizes for the canvases
+        this.vennCanvas.width = this.vennCanvas.offsetWidth;
+        this.vennCanvas.height = this.vennCanvas.offsetHeight;
+    
+        this.currentGraphCanvas.width = this.currentGraphCanvas.offsetWidth;
+        this.currentGraphCanvas.height = this.currentGraphCanvas.offsetHeight;
+    
+        this.targetGraphCanvas.width = this.targetGraphCanvas.offsetWidth;
+        this.targetGraphCanvas.height = this.targetGraphCanvas.offsetHeight;
+    
+        // Adjust initial circle positions based on new canvas size
+        if (!this.targetCircles) {
+            const centerX = this.vennCanvas.width / 2;
+            const centerY = this.vennCanvas.height / 2;
+            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+            const offset = baseRadius * 0.7; // Smaller offset ensures overlap
+    
+            // Position circles in an equilateral triangle formation
+            const angleStep = (2 * Math.PI) / 3;
+            this.circles = [
+                { 
+                    x: centerX + offset * Math.cos(0), 
+                    y: centerY + offset * Math.sin(0), 
+                    radius: baseRadius, 
+                    label: 'A' 
+                },
+                { 
+                    x: centerX + offset * Math.cos(angleStep), 
+                    y: centerY + offset * Math.sin(angleStep), 
+                    radius: baseRadius, 
+                    label: 'B' 
+                },
+                { 
+                    x: centerX + offset * Math.cos(2 * angleStep), 
+                    y: centerY + offset * Math.sin(2 * angleStep), 
+                    radius: baseRadius, 
+                    label: 'C' 
+                }
+            ];
+        }
+    
+        this.draw();
     }
-
-    this.draw();
-}
     
     resetGame() {
     // Generate random target configuration first
@@ -327,23 +344,35 @@ class VennGame {
     return regions;
 }
 
-    drawGraph(ctx, circles) {
+   drawGraph(ctx, circles) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         const regions = this.getRegions(circles);
         const nodeRadius = 25;
         
-        // Scale factor to space out nodes more than in the Venn diagram
-        const scaleFactor = 1.5;
-        const centerX = ctx.canvas.width / 2;
-        const centerY = ctx.canvas.height / 2;
+        // Calculate the bounding box of the Venn diagram
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        circles.forEach(circle => {
+            minX = Math.min(minX, circle.x - circle.radius);
+            maxX = Math.max(maxX, circle.x + circle.radius);
+            minY = Math.min(minY, circle.y - circle.radius);
+            maxY = Math.max(maxY, circle.y + circle.radius);
+        });
+        
+        const vennWidth = maxX - minX;
+        const vennHeight = maxY - minY;
+        
+        // Scale factor to fit in canvas while spacing out nodes
+        const scaleX = (ctx.canvas.width - 4 * nodeRadius) / vennWidth;
+        const scaleY = (ctx.canvas.height - 4 * nodeRadius) / vennHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.8; // 80% of available space
         
         const nodePositions = new Map();
         
         // Position nodes based on their centers in the Venn diagram
         regions.forEach(region => {
-            const x = centerX + (region.center.x - circles[0].x) * scaleFactor;
-            const y = centerY + (region.center.y - circles[0].y) * scaleFactor;
+            const x = ctx.canvas.width/2 + (region.center.x - (minX + vennWidth/2)) * scale;
+            const y = ctx.canvas.height/2 + (region.center.y - (minY + vennHeight/2)) * scale;
             nodePositions.set(region.label, { x, y });
         });
     
