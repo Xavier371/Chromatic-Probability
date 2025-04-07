@@ -18,19 +18,11 @@ class VennGame {
         this.currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         this.targetGraphCtx = this.targetGraphCanvas.getContext('2d');
 
-        // Set canvas sizes
-        this.resizeCanvases();
-        window.addEventListener('resize', () => this.resizeCanvases());
-
         // Game state
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
-
         this.circles = [
-            { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
-            { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
-            { x: centerX, y: centerY + baseRadius, radius: baseRadius, label: 'C' }
+            { x: 0, y: 0, radius: 80, label: 'A' },
+            { x: 0, y: 0, radius: 80, label: 'B' },
+            { x: 0, y: 0, radius: 80, label: 'C' }
         ];
         
         this.targetCircles = null;
@@ -39,7 +31,9 @@ class VennGame {
         this.isScaling = false;
         this.lastMousePos = { x: 0, y: 0 };
 
-        // Initialize game
+        // Set canvas sizes and initialize
+        this.resizeCanvases();
+        window.addEventListener('resize', () => this.resizeCanvases());
         this.initializeControls();
         this.resetGame();
     }
@@ -59,7 +53,7 @@ class VennGame {
         if (!this.targetCircles) {
             const centerX = this.vennCanvas.width / 2;
             const centerY = this.vennCanvas.height / 2;
-            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5; // Slightly larger circles
+            const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
     
             this.circles = [
                 { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
@@ -70,8 +64,7 @@ class VennGame {
     
         this.draw();
     }
-
-    initializeControls() {
+        initializeControls() {
         // Mouse events for Venn diagram
         this.vennCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.vennCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -88,14 +81,14 @@ class VennGame {
     }
 
     resetGame() {
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
-
         // Generate random target configuration
         this.targetCircles = this.generateRandomConfiguration();
         
         // Reset current circles to default positions
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
+
         this.circles = [
             { x: centerX - baseRadius, y: centerY, radius: baseRadius, label: 'A' },
             { x: centerX + baseRadius, y: centerY, radius: baseRadius, label: 'B' },
@@ -109,7 +102,7 @@ class VennGame {
     generateRandomConfiguration() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 6;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
         const maxOffset = baseRadius * 1.5;
 
         return [
@@ -208,17 +201,17 @@ class VennGame {
     handleTouchEnd() {
         this.handleMouseUp();
     }
-
-    drawCircle(ctx, circle) {
+        drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
         ctx.stroke();
     }
 
     getRegions(circles) {
-        // Calculate intersection points and regions
         const regions = [];
         
         // Add single circle regions
@@ -291,16 +284,21 @@ class VennGame {
             
             nodes.set(region.label, { x, y });
 
+            // Draw node circle
             ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
-            ctx.fillStyle = 'black';
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fillStyle = '#2196F3';  // Blue color for nodes
             ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.stroke();
 
-            // Draw labels with better positioning
+            // Draw label
+            ctx.fillStyle = 'white';
             ctx.font = '12px Arial';
-            ctx.textAlign = 'left';
+            ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(region.label, x + 8, y);
+            ctx.fillText(region.label, x, y);
         });
 
         // Draw edges
