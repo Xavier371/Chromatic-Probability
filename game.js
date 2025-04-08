@@ -11,19 +11,22 @@ class VennGame {
             console.error('Canvas elements not found');
             return;
         }
-
+    
         // Initialize game state
         this.circles = [];
         this.targetCircles = [];
         this.selectedCircle = null;
         this.dragOffset = { x: 0, y: 0 };
         this.scaling = false;
-
+    
         // Set up event listeners
         this.initializeControls();
         
-        // Generate initial target configuration
+        // Generate target configuration ONCE at the start and ensure it's valid
         this.targetCircles = this.generateRandomConfiguration();
+        while (!this.isValidTargetConfiguration(this.targetCircles)) {
+            this.targetCircles = this.generateRandomConfiguration();
+        }
         
         // Initialize default circles
         this.initializeDefaultCircles();
@@ -144,14 +147,12 @@ class VennGame {
     }
 
     resetGame() {
-        do {
-            this.targetCircles = this.generateRandomConfiguration();
-        } while (!this.isValidTargetConfiguration(this.targetCircles));
-
+        // Don't regenerate target circles, just reset the current circles
         this.initializeDefaultCircles();
         document.getElementById('winMessage').classList.add('hidden');
         this.draw();
     }
+
 
     initializeControls() {
         this.vennCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
@@ -316,7 +317,7 @@ class VennGame {
     drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white
         ctx.fill();
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
