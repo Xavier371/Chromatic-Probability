@@ -88,25 +88,25 @@ class VennGame {
     initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5; // Smaller radius
-        const offset = baseRadius * 1.2; // Larger offset for better initial spacing
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+        const offset = baseRadius * 0.7; // This creates the perfect overlap
     
         this.circles = [
-            { // Circle A - top right
-                x: centerX + offset * Math.cos(-Math.PI/6),
-                y: centerY + offset * Math.sin(-Math.PI/6),
+            { // Circle A - top
+                x: centerX,
+                y: centerY - offset,
                 radius: baseRadius,
                 label: 'A'
             },
-            { // Circle B - bottom
-                x: centerX + offset * Math.cos(Math.PI/2),
-                y: centerY + offset * Math.sin(Math.PI/2),
+            { // Circle B - bottom right
+                x: centerX + offset * Math.cos(Math.PI/6),
+                y: centerY + offset * Math.sin(Math.PI/6),
                 radius: baseRadius,
                 label: 'B'
             },
-            { // Circle C - top left
-                x: centerX + offset * Math.cos(7*Math.PI/6),
-                y: centerY + offset * Math.sin(7*Math.PI/6),
+            { // Circle C - bottom left
+                x: centerX - offset * Math.cos(Math.PI/6),
+                y: centerY + offset * Math.sin(Math.PI/6),
                 radius: baseRadius,
                 label: 'C'
             }
@@ -117,30 +117,39 @@ class VennGame {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
         const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const minRadius = maxRadius * 0.5;
+        const minRadius = maxRadius * 0.6;
         
-        // Generate more interesting configurations
-        const circles = [];
-        for (let i = 0; i < 3; i++) {
-            const radius = minRadius + Math.random() * (maxRadius - minRadius);
-            // Use wider angle range for more varied positions
-            const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI / 1.5 - Math.PI / 3);
-            // Vary the distance more
-            const distance = maxRadius * (0.8 + Math.random() * 1.2);
+        let circles;
+        let regions;
+        
+        // Keep generating until we have at least 5 regions
+        do {
+            circles = [];
+            for (let i = 0; i < 3; i++) {
+                const radius = minRadius + Math.random() * (maxRadius - minRadius);
+                // Use wider angle range for more varied positions
+                const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI - Math.PI/2);
+                // Vary the distance more but ensure some overlap
+                const distance = maxRadius * (0.6 + Math.random() * 0.8);
+                
+                circles.push({
+                    x: centerX + distance * Math.cos(angle),
+                    y: centerY + distance * Math.sin(angle),
+                    radius: radius,
+                    label: ['A', 'B', 'C'][i]
+                });
+            }
             
-            circles.push({
-                x: centerX + distance * Math.cos(angle),
-                y: centerY + distance * Math.sin(angle),
-                radius: radius,
-                label: ['A', 'B', 'C'][i]
+            // Add random offsets to create more interesting overlaps
+            circles.forEach(circle => {
+                circle.x += (Math.random() - 0.5) * maxRadius * 0.4;
+                circle.y += (Math.random() - 0.5) * maxRadius * 0.4;
             });
-        }
-        
-        // Add random offsets to create more interesting overlaps
-        circles.forEach(circle => {
-            circle.x += (Math.random() - 0.5) * maxRadius * 0.5;
-            circle.y += (Math.random() - 0.5) * maxRadius * 0.5;
-        });
+            
+            // Calculate regions to check if we have enough
+            regions = this.getRegions(circles);
+            
+        } while (regions.length < 5); // Ensure at least 5 regions
         
         return circles;
     }
