@@ -88,42 +88,45 @@ class VennGame {
     initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const offset = baseRadius * 0.7;
-
-        const angleStep = (2 * Math.PI) / 3;
+        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5; // Smaller radius
+        const offset = baseRadius * 1.2; // Larger offset for better initial spacing
+    
         this.circles = [
-            { 
-                x: centerX + offset * Math.cos(0), 
-                y: centerY + offset * Math.sin(0), 
-                radius: baseRadius, 
-                label: 'A' 
+            { // Circle A - top right
+                x: centerX + offset * Math.cos(-Math.PI/6),
+                y: centerY + offset * Math.sin(-Math.PI/6),
+                radius: baseRadius,
+                label: 'A'
             },
-            { 
-                x: centerX + offset * Math.cos(angleStep), 
-                y: centerY + offset * Math.sin(angleStep), 
-                radius: baseRadius, 
-                label: 'B' 
+            { // Circle B - bottom
+                x: centerX + offset * Math.cos(Math.PI/2),
+                y: centerY + offset * Math.sin(Math.PI/2),
+                radius: baseRadius,
+                label: 'B'
             },
-            { 
-                x: centerX + offset * Math.cos(2 * angleStep), 
-                y: centerY + offset * Math.sin(2 * angleStep), 
-                radius: baseRadius, 
-                label: 'C' 
+            { // Circle C - top left
+                x: centerX + offset * Math.cos(7*Math.PI/6),
+                y: centerY + offset * Math.sin(7*Math.PI/6),
+                radius: baseRadius,
+                label: 'C'
             }
         ];
     }
-        generateRandomConfiguration() {
+    
+    generateRandomConfiguration() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
-        const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 5;
-        const minRadius = maxRadius * 0.6;
+        const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+        const minRadius = maxRadius * 0.5;
         
+        // Generate more interesting configurations
         const circles = [];
         for (let i = 0; i < 3; i++) {
             const radius = minRadius + Math.random() * (maxRadius - minRadius);
-            const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI / 2 - Math.PI / 4);
-            const distance = maxRadius * (1.2 + Math.random() * 0.8);
+            // Use wider angle range for more varied positions
+            const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI / 1.5 - Math.PI / 3);
+            // Vary the distance more
+            const distance = maxRadius * (0.8 + Math.random() * 1.2);
             
             circles.push({
                 x: centerX + distance * Math.cos(angle),
@@ -132,6 +135,12 @@ class VennGame {
                 label: ['A', 'B', 'C'][i]
             });
         }
+        
+        // Add random offsets to create more interesting overlaps
+        circles.forEach(circle => {
+            circle.x += (Math.random() - 0.5) * maxRadius * 0.5;
+            circle.y += (Math.random() - 0.5) * maxRadius * 0.5;
+        });
         
         return circles;
     }
