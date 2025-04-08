@@ -14,7 +14,6 @@ class VennGame {
     
         // Initialize game state
         this.circles = [];
-        this.targetCircles = [];
         this.selectedCircle = null;
         this.dragOffset = { x: 0, y: 0 };
         this.scaling = false;
@@ -22,10 +21,10 @@ class VennGame {
         // Set up event listeners
         this.initializeControls();
         
-        // Generate target configuration ONCE at the start and ensure it's valid
-        this.targetCircles = this.generateRandomConfiguration();
-        while (!this.isValidTargetConfiguration(this.targetCircles)) {
-            this.targetCircles = this.generateRandomConfiguration();
+        // Generate target configuration ONCE and store it as a fixed property
+        this.fixedTargetCircles = this.generateRandomConfiguration();
+        while (!this.isValidTargetConfiguration(this.fixedTargetCircles)) {
+            this.fixedTargetCircles = this.generateRandomConfiguration();
         }
         
         // Initialize default circles
@@ -147,7 +146,7 @@ class VennGame {
     }
 
     resetGame() {
-        // Don't regenerate target circles, just reset the current circles
+        // Only reset the current circles, don't touch the target
         this.initializeDefaultCircles();
         document.getElementById('winMessage').classList.add('hidden');
         this.draw();
@@ -315,13 +314,18 @@ class VennGame {
     }
 
     drawCircle(ctx, circle) {
+        // First draw the stroke (border)
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white
-        ctx.fill();
         ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3; // Make the lines thicker
         ctx.stroke();
+        
+        // Then draw the fill with high transparency
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; // Very transparent white
+        ctx.fill();
     }
 
     drawGraph(ctx, circles) {
@@ -418,14 +422,28 @@ class VennGame {
         const vennCtx = this.vennCanvas.getContext('2d');
         const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         const targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-
+    
         // Clear canvases
         vennCtx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
         currentGraphCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
         targetGraphCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
-
-        // Draw Venn diagram circles
-        this.circles.forEach(circle => this.drawCircle(vennCtx, circle));
+    
+        // Draw Venn diagram circles - draw borders first
+        this.circles.forEach(circle => {
+            vennCtx.beginPath();
+            vennCtx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+            vennCtx.strokeStyle = 'black';
+            vennCtx.lineWidth = 3;
+            vennCtx.stroke();
+        });
+    
+        // Then draw fills
+        this.circles.forEach(circle => {
+            vennCtx.beginPath();
+            vennCtx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+            vennCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            vennCtx.fill();
+        });
         
         // Draw region labels
         const regions = this.getRegions(this.circles);
@@ -436,13 +454,10 @@ class VennGame {
             vennCtx.textBaseline = 'middle';
             vennCtx.fillText(region.label, region.center.x, region.center.y);
         });
-
-        // Draw graphs
+    
+        // Draw graphs - use fixedTargetCircles for target graph
         this.drawGraph(currentGraphCtx, this.circles);
-        this.drawGraph(targetGraphCtx, this.targetCircles);
-
-        // Check win condition
-        this.checkWinCondition();
+        this.drawGraph(targetGraphCtx, this.fixedTargetCircles); // Use fixed target circles
     }
 
     checkWinCondition() {
