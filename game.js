@@ -1,4 +1,5 @@
 class VennGame {
+    // ... existing code ...
     constructor() {
         console.log('VennGame constructor called');
         
@@ -11,25 +12,26 @@ class VennGame {
             console.error('Canvas elements not found');
             return;
         }
-
+    
         // Initialize game state
         this.circles = [];
         this.selectedCircle = null;
         this.dragOffset = { x: 0, y: 0 };
         this.scaling = false;
-
+    
         // Set up event listeners
         this.initializeControls();
+        
+        // Initialize default circles
+        this.initializeDefaultCircles(); // Ensure this is called here
         
         // Generate initial target configuration
         this.generateNewTarget();
         
-        // Initialize default circles
-        this.initializeDefaultCircles();
-        
         // Initial draw
         this.resizeCanvases();
     }
+// ... existing code ...
 
     isPointInCircle(point, circle) {
         const dx = point.x - circle.x;
@@ -174,6 +176,7 @@ class VennGame {
         window.addEventListener('resize', () => this.resizeCanvases());
     }
 
+    // ... existing code ...
     getRegions(circles) {
         const regions = [];
         
@@ -183,7 +186,7 @@ class VennGame {
                 regions.push({ label: circle.label, center: { x: circle.x, y: circle.y } });
             }
         });
-
+    
         const pairs = [['A', 'B'], ['B', 'C'], ['A', 'C']];
         pairs.forEach(([label1, label2]) => {
             const circle1 = circles.find(c => c.label === label1);
@@ -196,16 +199,17 @@ class VennGame {
                 }
             }
         });
-
+    
         if (this.hasTripleOverlap(circles)) {
             const center = this.calculateRegionCenter(circles, circles);
             if (center) {
                 regions.push({ label: 'ABC', center });
             }
         }
-
+    
         return regions;
     }
+    // ... existing code ...
 
     calculateRegionCenter(regionCircles, allCircles) {
         const points = this.generatePointGrid(regionCircles[0]);
