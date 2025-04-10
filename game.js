@@ -344,11 +344,11 @@ class VennGame {
         const vennCtx = this.vennCanvas.getContext('2d');
         const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         const targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-
+    
         vennCtx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
         currentGraphCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
         targetGraphCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
-
+    
         this.circles.forEach(circle => this.drawCircle(vennCtx, circle));
         
         const regions = this.getRegions(this.circles);
@@ -359,7 +359,7 @@ class VennGame {
             vennCtx.textBaseline = 'middle';
             vennCtx.fillText(region.label, region.center.x, region.center.y);
         });
-
+    
         this.drawGraph(currentGraphCtx, this.circles);
         this.drawGraph(targetGraphCtx, this.targetCircles);
         
