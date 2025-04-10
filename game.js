@@ -110,7 +110,7 @@ class VennGame {
             vennCtx.font = 'bold 16px Arial';
             vennCtx.textAlign = 'center';
             vennCtx.textBaseline = 'middle';
-            vennCtx.fillText(region.label, region.center.x, region.center.y);
+            vennCtx.fillText(region.label, region.center.x * this.vennCanvas.width, region.center.y * this.vennCanvas.height);
         });
 
         this.drawGraph(currentGraphCtx, this.circles);
