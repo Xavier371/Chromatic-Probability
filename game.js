@@ -196,7 +196,7 @@ class VennGame {
                 regions.push({ label: circle.label, center: { x: circle.x, y: circle.y } });
             }
         });
-
+    
         const pairs = [['A', 'B'], ['B', 'C'], ['A', 'C']];
         pairs.forEach(([label1, label2]) => {
             const circle1 = circles.find(c => c.label === label1);
@@ -209,14 +209,14 @@ class VennGame {
                 }
             }
         });
-
+    
         if (this.hasTripleOverlap(circles)) {
             const center = this.calculateRegionCenter(circles, circles);
             if (center) {
                 regions.push({ label: 'ABC', center });
             }
         }
-
+    
         return regions;
     }
 
