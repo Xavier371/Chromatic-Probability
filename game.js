@@ -82,11 +82,11 @@ class VennGame {
         const centerY = this.vennCanvas.height / 2;
         const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
         const offset = baseRadius * 0.7;
-    
+
         this.circles = [
             { x: centerX, y: centerY - offset, radius: baseRadius, label: 'A' },
-            { x: centerX + offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'B' },
-            { x: centerX - offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'C' }
+            { x: centerX + offset, y: centerY + offset, radius: baseRadius, label: 'B' },
+            { x: centerX - offset, y: centerY + offset, radius: baseRadius, label: 'C' }
         ];
     }
     
@@ -196,7 +196,7 @@ class VennGame {
                 regions.push({ label: circle.label, center: { x: circle.x, y: circle.y } });
             }
         });
-    
+
         const pairs = [['A', 'B'], ['B', 'C'], ['A', 'C']];
         pairs.forEach(([label1, label2]) => {
             const circle1 = circles.find(c => c.label === label1);
@@ -209,14 +209,14 @@ class VennGame {
                 }
             }
         });
-    
+
         if (this.hasTripleOverlap(circles)) {
             const center = this.calculateRegionCenter(circles, circles);
             if (center) {
                 regions.push({ label: 'ABC', center });
             }
         }
-    
+
         return regions;
     }
 
@@ -344,11 +344,11 @@ class VennGame {
         const vennCtx = this.vennCanvas.getContext('2d');
         const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
         const targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-    
+
         vennCtx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
         currentGraphCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
         targetGraphCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
-    
+
         this.circles.forEach(circle => this.drawCircle(vennCtx, circle));
         
         const regions = this.getRegions(this.circles);
@@ -359,7 +359,7 @@ class VennGame {
             vennCtx.textBaseline = 'middle';
             vennCtx.fillText(region.label, region.center.x, region.center.y);
         });
-    
+
         this.drawGraph(currentGraphCtx, this.circles);
         this.drawGraph(targetGraphCtx, this.targetCircles);
         
