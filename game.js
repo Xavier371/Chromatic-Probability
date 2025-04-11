@@ -21,9 +21,6 @@ class VennGame {
         // Set up event listeners
         this.initializeControls();
         
-        // Generate initial target configuration
-        this.generateNewTarget();
-        
         // Initialize default circles
         this.initializeDefaultCircles();
         
@@ -69,13 +66,6 @@ class VennGame {
         return this.isPointInCircle({ x: c1.x, y: c1.y }, c2) && this.isPointInCircle({ x: c1.x, y: c1.y }, c3);
     }
 
-    // Generate a new target configuration for the game
-    generateNewTarget() {
-        do {
-            this.targetCircles = this.generateRandomConfiguration();
-        } while (!this.isValidTargetConfiguration(this.targetCircles));
-    }
-
     // Initialize default circles for the game
     initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
@@ -88,65 +78,6 @@ class VennGame {
             { x: centerX + offset, y: centerY + offset, radius: baseRadius, label: 'B' },
             { x: centerX - offset, y: centerY + offset, radius: baseRadius, label: 'C' }
         ];
-    }
-    
-    // Generate a random configuration of circles
-    generateRandomConfiguration() {
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const minRadius = maxRadius * 0.6;
-        
-        let circles;
-        let regions;
-        
-        do {
-            circles = [];
-            for (let i = 0; i < 3; i++) {
-                const radius = minRadius + Math.random() * (maxRadius - minRadius);
-                const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI - Math.PI/2);
-                const distance = maxRadius * (0.6 + Math.random() * 0.8);
-                
-                circles.push({
-                    x: centerX + distance * Math.cos(angle),
-                    y: centerY + distance * Math.sin(angle),
-                    radius: radius,
-                    label: ['A', 'B', 'C'][i]
-                });
-            }
-            
-            circles.forEach(circle => {
-                circle.x += (Math.random() - 0.5) * maxRadius * 0.4;
-                circle.y += (Math.random() - 0.5) * maxRadius * 0.4;
-            });
-            
-            regions = this.getRegions(circles);
-            
-        } while (regions.length < 5);
-        
-        return circles;
-    }
-
-    // Validate the target configuration of circles
-    isValidTargetConfiguration(circles) {
-        let hasConnection = false;
-        
-        for (let i = 0; i < circles.length; i++) {
-            for (let j = i + 1; j < circles.length; j++) {
-                const c1 = circles[i];
-                const c2 = circles[j];
-                
-                if (this.isCircleContained(c1, c2) || this.isCircleContained(c2, c1)) {
-                    return false;
-                }
-                
-                if (this.isCirclesTouching(c1, c2) || this.hasOverlapArea(c1, c2)) {
-                    hasConnection = true;
-                }
-            }
-        }
-        
-        return hasConnection && !this.hasTripleOverlap(circles);
     }
 
     // Resize canvases to fit the window
@@ -165,7 +96,6 @@ class VennGame {
 
     // Reset the game to its initial state
     resetGame() {
-        this.generateNewTarget();
         this.initializeDefaultCircles();
         document.getElementById('winMessage').classList.add('hidden');
         this.draw();
@@ -463,5 +393,6 @@ class VennGame {
 }
 
 window.addEventListener('load', () => {
-    new VennGame();
+    const game = new VennGame();
+    game.resetGame(); // Ensure correct initialization
 });
