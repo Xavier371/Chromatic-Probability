@@ -21,6 +21,9 @@ class VennGame {
         // Set up event listeners
         this.initializeControls();
         
+        // Generate initial target configuration
+        this.generateNewTarget();
+        
         // Initialize default circles
         this.initializeDefaultCircles();
         
@@ -28,14 +31,12 @@ class VennGame {
         this.resizeCanvases();
     }
 
-    // Check if a point is inside a circle
     isPointInCircle(point, circle) {
         const dx = point.x - circle.x;
         const dy = point.y - circle.y;
         return dx * dx + dy * dy <= circle.radius * circle.radius;
     }
 
-    // Check if one circle is completely contained within another
     isCircleContained(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
@@ -43,7 +44,6 @@ class VennGame {
         return distance + circle1.radius <= circle2.radius;
     }
 
-    // Check if two circles are touching or overlapping
     isCirclesTouching(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
@@ -52,7 +52,6 @@ class VennGame {
         return Math.abs(distance - sumRadii) < 2 || this.isCircleContained(circle1, circle2) || this.isCircleContained(circle2, circle1);
     }
 
-    // Check if two circles have an overlapping area
     hasOverlapArea(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
@@ -60,27 +59,87 @@ class VennGame {
         return distance < circle1.radius + circle2.radius - 2;
     }
 
-    // Check if there is a triple overlap among three circles
     hasTripleOverlap(circles) {
         const [c1, c2, c3] = circles;
         return this.isPointInCircle({ x: c1.x, y: c1.y }, c2) && this.isPointInCircle({ x: c1.x, y: c1.y }, c3);
     }
 
-    // Initialize default circles for the game
+    generateNewTarget() {
+        do {
+            this.targetCircles = this.generateRandomConfiguration();
+        } while (!this.isValidTargetConfiguration(this.targetCircles));
+    }
+
     initializeDefaultCircles() {
         const centerX = this.vennCanvas.width / 2;
         const centerY = this.vennCanvas.height / 2;
         const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
         const offset = baseRadius * 0.7;
-
+    
         this.circles = [
             { x: centerX, y: centerY - offset, radius: baseRadius, label: 'A' },
-            { x: centerX + offset, y: centerY + offset, radius: baseRadius, label: 'B' },
-            { x: centerX - offset, y: centerY + offset, radius: baseRadius, label: 'C' }
+            { x: centerX + offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'B' },
+            { x: centerX - offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'C' }
         ];
     }
+    
+    generateRandomConfiguration() {
+        const centerX = this.vennCanvas.width / 2;
+        const centerY = this.vennCanvas.height / 2;
+        const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
+        const minRadius = maxRadius * 0.6;
+        
+        let circles;
+        let regions;
+        
+        do {
+            circles = [];
+            for (let i = 0; i < 3; i++) {
+                const radius = minRadius + Math.random() * (maxRadius - minRadius);
+                const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI - Math.PI/2);
+                const distance = maxRadius * (0.6 + Math.random() * 0.8);
+                
+                circles.push({
+                    x: centerX + distance * Math.cos(angle),
+                    y: centerY + distance * Math.sin(angle),
+                    radius: radius,
+                    label: ['A', 'B', 'C'][i]
+                });
+            }
+            
+            circles.forEach(circle => {
+                circle.x += (Math.random() - 0.5) * maxRadius * 0.4;
+                circle.y += (Math.random() - 0.5) * maxRadius * 0.4;
+            });
+            
+            regions = this.getRegions(circles);
+            
+        } while (regions.length < 5);
+        
+        return circles;
+    }
 
-    // Resize canvases to fit the window
+    isValidTargetConfiguration(circles) {
+        let hasConnection = false;
+        
+        for (let i = 0; i < circles.length; i++) {
+            for (let j = i + 1; j < circles.length; j++) {
+                const c1 = circles[i];
+                const c2 = circles[j];
+                
+                if (this.isCircleContained(c1, c2) || this.isCircleContained(c2, c1)) {
+                    return false;
+                }
+                
+                if (this.isCirclesTouching(c1, c2) || this.hasOverlapArea(c1, c2)) {
+                    hasConnection = true;
+                }
+            }
+        }
+        
+        return hasConnection && !this.hasTripleOverlap(circles);
+    }
+
     resizeCanvases() {
         const setCanvasSize = (canvas) => {
             canvas.width = canvas.offsetWidth;
@@ -94,14 +153,13 @@ class VennGame {
         this.draw();
     }
 
-    // Reset the game to its initial state
     resetGame() {
+        this.generateNewTarget();
         this.initializeDefaultCircles();
         document.getElementById('winMessage').classList.add('hidden');
         this.draw();
     }
 
-    // Initialize event listeners for user interactions
     initializeControls() {
         this.vennCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.vennCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -116,7 +174,6 @@ class VennGame {
         window.addEventListener('resize', () => this.resizeCanvases());
     }
 
-    // Get regions formed by the circles
     getRegions(circles) {
         const regions = [];
         
@@ -150,7 +207,6 @@ class VennGame {
         return regions;
     }
 
-    // Calculate the center of a region formed by circles
     calculateRegionCenter(regionCircles, allCircles) {
         const points = this.generatePointGrid(regionCircles[0]);
         let validPoints = points.filter(point => {
@@ -167,7 +223,6 @@ class VennGame {
         return { x: centerX, y: centerY };
     }
 
-    // Generate a grid of points within a circle
     generatePointGrid(circle) {
         const points = [];
         const gridSize = 5;
@@ -186,7 +241,6 @@ class VennGame {
         return points;
     }
 
-    // Draw a circle on the canvas
     drawCircle(ctx, circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
@@ -198,7 +252,6 @@ class VennGame {
         ctx.fill();
     }
 
-    // Draw the graph representation of the circles
     drawGraph(ctx, circles) {
         const regions = this.getRegions(circles);
         const nodePositions = this.calculateGraphLayout(regions);
@@ -238,7 +291,6 @@ class VennGame {
         });
     }
 
-    // Calculate the layout for the graph nodes
     calculateGraphLayout(regions) {
         const positions = {};
         const centerX = this.currentGraphCanvas.width / 2;
@@ -256,7 +308,6 @@ class VennGame {
         return positions;
     }
 
-    // Check if two regions are adjacent
     areRegionsAdjacent(label1, label2, circles) {
         if (label1.length === 1 && label2.length === 1) {
             const circle1 = circles.find(c => c.label === label1);
@@ -269,7 +320,6 @@ class VennGame {
         return [...set1].some(circle => set2.has(circle));
     }
 
-    // Draw the entire game state
     draw() {
         const vennCtx = this.vennCanvas.getContext('2d');
         const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
@@ -296,7 +346,6 @@ class VennGame {
         this.checkWinCondition();
     }
 
-    // Check if the current game state matches the target
     checkWinCondition() {
         const currentRegions = this.getRegions(this.circles);
         const targetRegions = this.getRegions(this.targetCircles);
@@ -311,7 +360,6 @@ class VennGame {
         }
     }
 
-    // Get the mouse position relative to the canvas
     getMousePos(e) {
         const rect = this.vennCanvas.getBoundingClientRect();
         const scaleX = this.vennCanvas.width / rect.width;
@@ -322,7 +370,6 @@ class VennGame {
         };
     }
 
-    // Handle mouse down event
     handleMouseDown(e) {
         const pos = this.getMousePos(e);
         this.selectedCircle = null;
@@ -349,7 +396,6 @@ class VennGame {
         }
     }
 
-    // Handle mouse move event
     handleMouseMove(e) {
         if (!this.selectedCircle) return;
         const pos = this.getMousePos(e);
@@ -366,33 +412,28 @@ class VennGame {
         this.draw();
     }
 
-    // Handle mouse up event
     handleMouseUp() {
         this.selectedCircle = null;
         this.scaling = false;
     }
 
-    // Handle touch start event
     handleTouchStart(e) {
         e.preventDefault();
         const touch = e.touches[0];
         this.handleMouseDown(touch);
     }
 
-    // Handle touch move event
     handleTouchMove(e) {
         e.preventDefault();
         const touch = e.touches[0];
         this.handleMouseMove(touch);
     }
 
-    // Handle touch end event
     handleTouchEnd() {
         this.handleMouseUp();
     }
 }
 
 window.addEventListener('load', () => {
-    const game = new VennGame();
-    game.resetGame(); // Ensure correct initialization
+    new VennGame();
 });
