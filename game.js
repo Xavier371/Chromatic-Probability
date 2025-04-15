@@ -49,14 +49,14 @@ class VennGame {
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const sumRadii = circle1.radius + circle2.radius;
-        return Math.abs(distance - sumRadii) < 2 || this.isCircleContained(circle1, circle2) || this.isCircleContained(circle2, circle1);
+        return Math.abs(distance - sumRadii) < 2;
     }
 
     hasOverlapArea(circle1, circle2) {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < circle1.radius + circle2.radius - 2;
+        return distance < circle1.radius + circle2.radius && distance > Math.abs(circle1.radius - circle2.radius);
     }
 
     hasTripleOverlap(circles) {
@@ -204,6 +204,7 @@ class VennGame {
             }
         }
 
+        console.log('Regions:', regions);
         return regions;
     }
 
@@ -312,7 +313,7 @@ class VennGame {
         if (label1.length === 1 && label2.length === 1) {
             const circle1 = circles.find(c => c.label === label1);
             const circle2 = circles.find(c => c.label === label2);
-            return this.isCirclesTouching(circle1, circle2) || this.hasOverlapArea(circle1, circle2);
+            return this.hasOverlapArea(circle1, circle2);
         }
         
         const set1 = new Set(label1.split(''));
