@@ -1,440 +1,350 @@
-class VennGame {
-    constructor() {
-        console.log('VennGame constructor called');
-        
-        // Get canvas elements
-        this.vennCanvas = document.getElementById('vennCanvas');
-        this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
-        this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
-        
-        if (!this.vennCanvas || !this.currentGraphCanvas || !this.targetGraphCanvas) {
-            console.error('Canvas elements not found');
-            return;
-        }
+class ChromaticVenn {
+  constructor() {
+    this.vennCanvas = document.getElementById('vennCanvas');
+    this.targetGraphCanvas = document.getElementById('targetGraphCanvas');
+    this.currentGraphCanvas = document.getElementById('currentGraphCanvas');
+    this.debugMode = false;
 
-        // Initialize game state
-        this.circles = [];
-        this.selectedCircle = null;
-        this.dragOffset = { x: 0, y: 0 };
+    this.ctx = this.vennCanvas.getContext('2d');
+    this.targetCtx = this.targetGraphCanvas.getContext('2d');
+    this.currentCtx = this.currentGraphCanvas.getContext('2d');
+
+    this.circles = [];
+    this.dragging = null;
+    this.scaling = false;
+    this.dragOffset = { x: 0, y: 0 };
+
+    this.init();
+  }
+
+  init() {
+    this.setCanvasSizes();
+    this.createCircles();
+    this.attachEvents();
+    this.generateTargetGraph();
+    this.draw();
+  }
+
+  setCanvasSizes() {
+    [this.vennCanvas, this.targetGraphCanvas, this.currentGraphCanvas].forEach(canvas => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    });
+  }
+
+  createCircles() {
+    const w = this.vennCanvas.width;
+    const h = this.vennCanvas.height;
+    const r = Math.min(w, h) / 4;
+    const offset = r * 0.7;
+
+    this.circles = [
+      { x: w / 2, y: h / 2 - offset, r, label: 'A' },
+      { x: w / 2 + offset * Math.cos(Math.PI / 6), y: h / 2 + offset * Math.sin(Math.PI / 6), r, label: 'B' },
+      { x: w / 2 - offset * Math.cos(Math.PI / 6), y: h / 2 + offset * Math.sin(Math.PI / 6), r, label: 'C' }
+    ];
+  }
+
+  attachEvents() {
+    const canvas = this.vennCanvas;
+
+    canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    canvas.addEventListener('mouseup', () => this.handleMouseUp());
+    canvas.addEventListener('mouseleave', () => this.handleMouseUp());
+
+    canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+    canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+    canvas.addEventListener('touchend', () => this.handleTouchEnd());
+
+    document.getElementById('resetButton').addEventListener('click', () => this.resetGame());
+    document.getElementById('debugToggle').addEventListener('change', (e) => {
+      this.debugMode = e.target.checked;
+      this.draw();
+    });
+
+    window.addEventListener('resize', () => {
+      this.setCanvasSizes();
+      this.draw();
+    });
+  }
+
+  resetGame() {
+    this.createCircles();
+    this.generateTargetGraph();
+    this.draw();
+    document.getElementById('winMessage').classList.add('hidden');
+  }
+  getMousePos(e) {
+    const rect = this.vennCanvas.getBoundingClientRect();
+    const scaleX = this.vennCanvas.width / rect.width;
+    const scaleY = this.vennCanvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  handleMouseDown(e) {
+    const pos = this.getMousePos(e);
+    for (const circle of this.circles) {
+      const dx = pos.x - circle.x;
+      const dy = pos.y - circle.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (Math.abs(dist - circle.r) < 10) {
+        this.dragging = circle;
+        this.scaling = true;
+        return;
+      } else if (dist < circle.r) {
+        this.dragging = circle;
         this.scaling = false;
+        this.dragOffset = { x: pos.x - circle.x, y: pos.y - circle.y };
+        return;
+      }
+    }
+  }
 
-        // Set up event listeners
-        this.initializeControls();
-        
-        // Generate initial target configuration
-        this.generateNewTarget();
-        
-        // Initialize default circles
-        this.initializeDefaultCircles();
-        
-        // Initial draw
-        this.resizeCanvases();
+  handleMouseMove(e) {
+    if (!this.dragging) return;
+    const pos = this.getMousePos(e);
+
+    if (this.scaling) {
+      const dx = pos.x - this.dragging.x;
+      const dy = pos.y - this.dragging.y;
+      this.dragging.r = Math.max(10, Math.sqrt(dx * dx + dy * dy));
+    } else {
+      this.dragging.x = pos.x - this.dragOffset.x;
+      this.dragging.y = pos.y - this.dragOffset.y;
     }
 
-    isPointInCircle(point, circle) {
-        const dx = point.x - circle.x;
-        const dy = point.y - circle.y;
-        return dx * dx + dy * dy <= circle.radius * circle.radius;
-    }
+    this.draw();
+  }
 
-    isCircleContained(circle1, circle2) {
-        const dx = circle1.x - circle2.x;
-        const dy = circle1.y - circle2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance + circle1.radius <= circle2.radius;
-    }
+  handleMouseUp() {
+    this.dragging = null;
+    this.scaling = false;
+  }
 
-    isCirclesTouching(circle1, circle2) {
-        const dx = circle1.x - circle2.x;
-        const dy = circle1.y - circle2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const sumRadii = circle1.radius + circle2.radius;
-        return Math.abs(distance - sumRadii) < 2;
-    }
+  handleTouchStart(e) {
+    e.preventDefault();
+    this.handleMouseDown(e.touches[0]);
+  }
 
-    hasOverlapArea(circle1, circle2) {
-        const dx = circle1.x - circle2.x;
-        const dy = circle1.y - circle2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < circle1.radius + circle2.radius && distance > Math.abs(circle1.radius - circle2.radius);
-    }
+  handleTouchMove(e) {
+    e.preventDefault();
+    this.handleMouseMove(e.touches[0]);
+  }
 
-    hasTripleOverlap(circles) {
-        const [c1, c2, c3] = circles;
-        return this.isPointInCircle({ x: c1.x, y: c1.y }, c2) && this.isPointInCircle({ x: c1.x, y: c1.y }, c3);
-    }
+  handleTouchEnd() {
+    this.handleMouseUp();
+  }
 
-    generateNewTarget() {
-        do {
-            this.targetCircles = this.generateRandomConfiguration();
-        } while (!this.isValidTargetConfiguration(this.targetCircles));
-    }
+  pointInCircle(p, circle) {
+    const dx = p.x - circle.x;
+    const dy = p.y - circle.y;
+    return dx * dx + dy * dy <= circle.r * circle.r;
+  }
 
-    initializeDefaultCircles() {
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const baseRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const offset = baseRadius * 0.7;
-    
-        this.circles = [
-            { x: centerX, y: centerY - offset, radius: baseRadius, label: 'A' },
-            { x: centerX + offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'B' },
-            { x: centerX - offset * Math.cos(Math.PI/6), y: centerY + offset * Math.sin(Math.PI/6), radius: baseRadius, label: 'C' }
-        ];
-    }
-    
-    generateRandomConfiguration() {
-        const centerX = this.vennCanvas.width / 2;
-        const centerY = this.vennCanvas.height / 2;
-        const maxRadius = Math.min(this.vennCanvas.width, this.vennCanvas.height) / 4;
-        const minRadius = maxRadius * 0.6;
-        
-        let circles;
-        let regions;
-        
-        do {
-            circles = [];
-            for (let i = 0; i < 3; i++) {
-                const radius = minRadius + Math.random() * (maxRadius - minRadius);
-                const angle = (i * 2 * Math.PI / 3) + (Math.random() * Math.PI - Math.PI/2);
-                const distance = maxRadius * (0.6 + Math.random() * 0.8);
-                
-                circles.push({
-                    x: centerX + distance * Math.cos(angle),
-                    y: centerY + distance * Math.sin(angle),
-                    radius: radius,
-                    label: ['A', 'B', 'C'][i]
-                });
-            }
-            
-            circles.forEach(circle => {
-                circle.x += (Math.random() - 0.5) * maxRadius * 0.4;
-                circle.y += (Math.random() - 0.5) * maxRadius * 0.4;
-            });
-            
-            regions = this.getRegions(circles);
-            
-        } while (regions.length < 5);
-        
-        return circles;
-    }
+  regionExists(label, regions) {
+    return regions.some(r => r.label === label);
+  }
+  getRegions() {
+    const [A, B, C] = this.circles;
 
-    isValidTargetConfiguration(circles) {
-        let hasConnection = false;
-        
-        for (let i = 0; i < circles.length; i++) {
-            for (let j = i + 1; j < circles.length; j++) {
-                const c1 = circles[i];
-                const c2 = circles[j];
-                
-                if (this.isCircleContained(c1, c2) || this.isCircleContained(c2, c1)) {
-                    return false;
-                }
-                
-                if (this.isCirclesTouching(c1, c2) || this.hasOverlapArea(c1, c2)) {
-                    hasConnection = true;
-                }
-            }
-        }
-        
-        return hasConnection && !this.hasTripleOverlap(circles);
-    }
+    const regionLabels = ['a', 'b', 'c', 'ab', 'bc', 'ac', 'abc'];
+    const regions = [];
 
-    resizeCanvases() {
-        const setCanvasSize = (canvas) => {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-        };
+    const grid = this.generateGridPoints(10);
+    for (const point of grid) {
+      const inA = this.pointInCircle(point, A);
+      const inB = this.pointInCircle(point, B);
+      const inC = this.pointInCircle(point, C);
 
-        setCanvasSize(this.vennCanvas);
-        setCanvasSize(this.currentGraphCanvas);
-        setCanvasSize(this.targetGraphCanvas);
+      let label = '';
+      if (inA && !inB && !inC) label = 'a';
+      else if (!inA && inB && !inC) label = 'b';
+      else if (!inA && !inB && inC) label = 'c';
+      else if (inA && inB && !inC) label = 'ab';
+      else if (!inA && inB && inC) label = 'bc';
+      else if (inA && !inB && inC) label = 'ac';
+      else if (inA && inB && inC) label = 'abc';
 
-        this.draw();
-    }
-
-    resetGame() {
-        this.generateNewTarget();
-        this.initializeDefaultCircles();
-        document.getElementById('winMessage').classList.add('hidden');
-        this.draw();
-    }
-
-    initializeControls() {
-        this.vennCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.vennCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.vennCanvas.addEventListener('mouseup', () => this.handleMouseUp());
-        this.vennCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
-
-        this.vennCanvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        this.vennCanvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
-        this.vennCanvas.addEventListener('touchend', () => this.handleTouchEnd());
-
-        document.getElementById('resetButton').addEventListener('click', () => this.resetGame());
-        window.addEventListener('resize', () => this.resizeCanvases());
-    }
-
-    getRegions(circles) {
-        const regions = [];
-        
-        circles.forEach(circle => {
-            const isContained = circles.some(other => other !== circle && this.isCircleContained(circle, other));
-            if (!isContained) {
-                regions.push({ label: circle.label, center: { x: circle.x, y: circle.y } });
-            }
-        });
-
-        const pairs = [['A', 'B'], ['B', 'C'], ['A', 'C']];
-        pairs.forEach(([label1, label2]) => {
-            const circle1 = circles.find(c => c.label === label1);
-            const circle2 = circles.find(c => c.label === label2);
-            
-            if (this.hasOverlapArea(circle1, circle2) && !this.isCircleContained(circle1, circle2) && !this.isCircleContained(circle2, circle1)) {
-                const center = this.calculateRegionCenter([circle1, circle2], circles);
-                if (center) {
-                    regions.push({ label: label1 + label2, center });
-                }
-            }
-        });
-
-        if (this.hasTripleOverlap(circles)) {
-            const center = this.calculateRegionCenter(circles, circles);
-            if (center) {
-                regions.push({ label: 'ABC', center });
-            }
-        }
-
-        console.log('Regions:', regions);
-        return regions;
-    }
-
-    calculateRegionCenter(regionCircles, allCircles) {
-        const points = this.generatePointGrid(regionCircles[0]);
-        let validPoints = points.filter(point => {
-            const inRegionCircles = regionCircles.every(circle => this.isPointInCircle(point, circle));
-            const outsideOtherCircles = allCircles.filter(c => !regionCircles.includes(c)).every(circle => !this.isPointInCircle(point, circle));
-            return inRegionCircles && outsideOtherCircles;
-        });
-
-        if (validPoints.length === 0) return null;
-
-        const centerX = validPoints.reduce((sum, p) => sum + p.x, 0) / validPoints.length;
-        const centerY = validPoints.reduce((sum, p) => sum + p.y, 0) / validPoints.length;
-        
-        return { x: centerX, y: centerY };
-    }
-
-    generatePointGrid(circle) {
-        const points = [];
-        const gridSize = 5;
-        const boundingBox = {
-            minX: circle.x - circle.radius,
-            maxX: circle.x + circle.radius,
-            minY: circle.y - circle.radius,
-            maxY: circle.y + circle.radius
-        };
-
-        for (let x = boundingBox.minX; x <= boundingBox.maxX; x += gridSize) {
-            for (let y = boundingBox.minY; y <= boundingBox.maxY; y += gridSize) {
-                points.push({ x, y });
-            }
-        }
-        return points;
-    }
-
-    drawCircle(ctx, circle) {
-        ctx.beginPath();
-        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fill();
-    }
-
-    drawGraph(ctx, circles) {
-        const regions = this.getRegions(circles);
-        const nodePositions = this.calculateGraphLayout(regions);
-        
-        ctx.beginPath();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        
-        for (let i = 0; i < regions.length; i++) {
-            for (let j = i + 1; j < regions.length; j++) {
-                if (this.areRegionsAdjacent(regions[i].label, regions[j].label, circles)) {
-                    const pos1 = nodePositions[regions[i].label];
-                    const pos2 = nodePositions[regions[j].label];
-                    ctx.moveTo(pos1.x, pos1.y);
-                    ctx.lineTo(pos2.x, pos2.y);
-                }
-            }
-        }
-        ctx.stroke();
-
-        regions.forEach(region => {
-            const pos = nodePositions[region.label];
-            
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
-            ctx.fillStyle = '#1a73e8';
-            ctx.fill();
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(region.label, pos.x, pos.y);
-        });
-    }
-
-    calculateGraphLayout(regions) {
-        const positions = {};
-        const centerX = this.currentGraphCanvas.width / 2;
-        const centerY = this.currentGraphCanvas.height / 2;
-        const radius = Math.min(this.currentGraphCanvas.width, this.currentGraphCanvas.height) * 0.35;
-        
-        regions.forEach((region, i) => {
-            const angle = (i * 2 * Math.PI / regions.length) - Math.PI / 2;
-            positions[region.label] = {
-                x: centerX + radius * Math.cos(angle),
-                y: centerY + radius * Math.sin(angle)
-            };
-        });
-        
-        return positions;
-    }
-
-    areRegionsAdjacent(label1, label2, circles) {
-        if (label1.length === 1 && label2.length === 1) {
-            const circle1 = circles.find(c => c.label === label1);
-            const circle2 = circles.find(c => c.label === label2);
-            return this.hasOverlapArea(circle1, circle2);
-        }
-        
-        const set1 = new Set(label1.split(''));
-        const set2 = new Set(label2.split(''));
-        return [...set1].some(circle => set2.has(circle));
-    }
-
-    draw() {
-        const vennCtx = this.vennCanvas.getContext('2d');
-        const currentGraphCtx = this.currentGraphCanvas.getContext('2d');
-        const targetGraphCtx = this.targetGraphCanvas.getContext('2d');
-
-        vennCtx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
-        currentGraphCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
-        targetGraphCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
-
-        this.circles.forEach(circle => this.drawCircle(vennCtx, circle));
-        
-        const regions = this.getRegions(this.circles);
-        regions.forEach(region => {
-            vennCtx.fillStyle = 'black';
-            vennCtx.font = 'bold 16px Arial';
-            vennCtx.textAlign = 'center';
-            vennCtx.textBaseline = 'middle';
-            vennCtx.fillText(region.label, region.center.x, region.center.y);
-        });
-
-        this.drawGraph(currentGraphCtx, this.circles);
-        this.drawGraph(targetGraphCtx, this.targetCircles);
-        
-        this.checkWinCondition();
-    }
-
-    checkWinCondition() {
-        const currentRegions = this.getRegions(this.circles);
-        const targetRegions = this.getRegions(this.targetCircles);
-        
-        if (currentRegions.length !== targetRegions.length) return;
-        
-        const currentLabels = new Set(currentRegions.map(r => r.label));
-        const targetLabels = new Set(targetRegions.map(r => r.label));
-        
-        if (currentLabels.size === targetLabels.size && [...currentLabels].every(label => targetLabels.has(label))) {
-            document.getElementById('winMessage').classList.remove('hidden');
-        }
-    }
-
-    getMousePos(e) {
-        const rect = this.vennCanvas.getBoundingClientRect();
-        const scaleX = this.vennCanvas.width / rect.width;
-        const scaleY = this.vennCanvas.height / rect.height;
-        return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
-        };
-    }
-
-    handleMouseDown(e) {
-        const pos = this.getMousePos(e);
-        this.selectedCircle = null;
-        this.scaling = false;
-
-        for (const circle of this.circles) {
-            const dist = Math.sqrt((pos.x - circle.x) ** 2 + (pos.y - circle.y) ** 2);
-            if (Math.abs(dist - circle.radius) < 10) {
-                this.selectedCircle = circle;
-                this.scaling = true;
-                return;
-            }
-        }
-
-        for (const circle of this.circles) {
-            if (this.isPointInCircle(pos, circle)) {
-                this.selectedCircle = circle;
-                this.dragOffset = {
-                    x: pos.x - circle.x,
-                    y: pos.y - circle.y
-                };
-                return;
-            }
-        }
-    }
-
-    handleMouseMove(e) {
-        if (!this.selectedCircle) return;
-        const pos = this.getMousePos(e);
-
-        if (this.scaling) {
-            const dx = pos.x - this.selectedCircle.x;
-            const dy = pos.y - this.selectedCircle.y;
-            this.selectedCircle.radius = Math.sqrt(dx * dx + dy * dy);
+      if (label) {
+        const existing = regions.find(r => r.label === label);
+        if (existing) {
+          existing.points.push(point);
         } else {
-            this.selectedCircle.x = pos.x - this.dragOffset.x;
-            this.selectedCircle.y = pos.y - this.dragOffset.y;
+          regions.push({ label, points: [point] });
         }
-
-        this.draw();
+      }
     }
 
-    handleMouseUp() {
-        this.selectedCircle = null;
-        this.scaling = false;
+    // Calculate center point for label placement
+    regions.forEach(region => {
+      const sum = region.points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+      const count = region.points.length;
+      region.center = { x: sum.x / count, y: sum.y / count };
+    });
+
+    return regions;
+  }
+
+  generateGridPoints(step = 10) {
+    const points = [];
+    const w = this.vennCanvas.width;
+    const h = this.vennCanvas.height;
+    for (let x = 0; x <= w; x += step) {
+      for (let y = 0; y <= h; y += step) {
+        points.push({ x, y });
+      }
+    }
+    return points;
+  }
+
+  getAdjacencyGraph(regions) {
+    const adjacency = {};
+    for (const r1 of regions) {
+      adjacency[r1.label] = new Set();
+      for (const r2 of regions) {
+        if (r1 === r2) continue;
+        if (this.areRegionsTouching(r1, r2)) {
+          adjacency[r1.label].add(r2.label);
+        }
+      }
+    }
+    return adjacency;
+  }
+
+  areRegionsTouching(r1, r2) {
+    for (const p1 of r1.points) {
+      for (const p2 of r2.points) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        if (dx * dx + dy * dy < 100) return true;
+      }
+    }
+    return false;
+  }
+
+  draw() {
+    this.ctx.clearRect(0, 0, this.vennCanvas.width, this.vennCanvas.height);
+    this.currentCtx.clearRect(0, 0, this.currentGraphCanvas.width, this.currentGraphCanvas.height);
+    this.targetCtx.clearRect(0, 0, this.targetGraphCanvas.width, this.targetGraphCanvas.height);
+
+    for (const circle of this.circles) {
+      this.ctx.beginPath();
+      this.ctx.arc(circle.x, circle.y, circle.r, 0, Math.PI * 2);
+      this.ctx.strokeStyle = 'black';
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+      this.ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      this.ctx.fill();
     }
 
-    handleTouchStart(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        this.handleMouseDown(touch);
+    const regions = this.getRegions();
+
+    for (const region of regions) {
+      this.ctx.fillStyle = 'black';
+      this.ctx.font = '16px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(region.label, region.center.x, region.center.y);
     }
 
-    handleTouchMove(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        this.handleMouseMove(touch);
+    this.drawGraph(this.currentCtx, this.getAdjacencyGraph(regions), this.currentGraphCanvas);
+
+    if (this.targetGraph) {
+      this.drawGraph(this.targetCtx, this.targetGraph, this.targetGraphCanvas);
     }
 
-    handleTouchEnd() {
-        this.handleMouseUp();
+    this.checkWin(regions);
+  }
+
+  drawGraph(ctx, graph, canvas) {
+    const labels = Object.keys(graph);
+    const positions = {};
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(canvas.width, canvas.height) * 0.35;
+
+    labels.forEach((label, i) => {
+      const angle = (i * 2 * Math.PI) / labels.length;
+      positions[label] = {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
+      };
+    });
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'black';
+    for (const from of labels) {
+      for (const to of graph[from]) {
+        ctx.beginPath();
+        ctx.moveTo(positions[from].x, positions[from].y);
+        ctx.lineTo(positions[to].x, positions[to].y);
+        ctx.stroke();
+      }
     }
+
+    for (const label of labels) {
+      const pos = positions[label];
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 16, 0, 2 * Math.PI);
+      ctx.fillStyle = '#1a73e8';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.stroke();
+
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, pos.x, pos.y);
+    }
+  }
+
+  generateTargetGraph() {
+    const mockCircles = this.createMockRandomCircles();
+    const mockRegions = this.getRegionsFromCircles(mockCircles);
+    this.targetGraph = this.getAdjacencyGraph(mockRegions);
+  }
+
+  createMockRandomCircles() {
+    const w = this.vennCanvas.width;
+    const h = this.vennCanvas.height;
+    const r = Math.min(w, h) / 4;
+    const offset = r * 0.7;
+    return [
+      { x: w / 2, y: h / 2 - offset, r, label: 'A' },
+      { x: w / 2 + offset * Math.cos(Math.PI / 6), y: h / 2 + offset * Math.sin(Math.PI / 6), r, label: 'B' },
+      { x: w / 2 - offset * Math.cos(Math.PI / 6), y: h / 2 + offset * Math.sin(Math.PI / 6), r, label: 'C' }
+    ];
+  }
+
+  getRegionsFromCircles(circles) {
+    const backup = this.circles;
+    this.circles = circles;
+    const result = this.getRegions();
+    this.circles = backup;
+    return result;
+  }
+
+  checkWin(currentRegions) {
+    const currentGraph = this.getAdjacencyGraph(currentRegions);
+    const tKeys = Object.keys(this.targetGraph).sort();
+    const cKeys = Object.keys(currentGraph).sort();
+    if (tKeys.length !== cKeys.length) return;
+    for (let i = 0; i < tKeys.length; i++) {
+      if (tKeys[i] !== cKeys[i]) return;
+      const tgSet = [...this.targetGraph[tKeys[i]]].sort();
+      const cgSet = [...currentGraph[cKeys[i]]].sort();
+      if (tgSet.length !== cgSet.length) return;
+      for (let j = 0; j < tgSet.length; j++) {
+        if (tgSet[j] !== cgSet[j]) return;
+      }
+    }
+    document.getElementById('winMessage').classList.remove('hidden');
+  }
 }
 
-window.addEventListener('load', () => {
-    new VennGame();
-});
+window.addEventListener('load', () => new ChromaticVenn());
