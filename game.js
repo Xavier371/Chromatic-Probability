@@ -187,9 +187,7 @@ class ChromaticVenn {
   const pts2 = map[label2];
   for (const p1 of pts1) {
     for (const p2 of pts2) {
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
-      if (dx * dx + dy * dy <= this.gridStep * this.gridStep) return true;
+      if (p1.x === p2.x && p1.y === p2.y) return true;
     }
   }
   return false;
