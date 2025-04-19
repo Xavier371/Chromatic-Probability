@@ -8,7 +8,7 @@ class ChromaticVenn {
     this.targetCtx = this.targetGraphCanvas.getContext("2d");
     this.currentCtx = this.currentGraphCanvas.getContext("2d");
 
-    this.gridStep = 2; // Reduced for higher precision
+    this.gridStep = 5; // Back to original value for performance
     this.circles = [];
     this.dragging = null;
     this.scaling = false;
@@ -181,20 +181,31 @@ class ChromaticVenn {
     };
   }
 
-  areAdjacent(label1, label2, map) {
-    if (!map[label1] || !map[label2]) return false;
-    const pts1 = map[label1];
-    const pts2 = map[label2];
-    for (const p1 of pts1) {
-      for (const p2 of pts2) {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
-        if (dx * dx + dy * dy <= this.gridStep * this.gridStep) {
-          console.log(`Adjacent: ${label1} and ${label2}`);
-          return true;
-        }
-      }
+  // This method directly defines adjacency based on set theory
+  areRegionsAdjacent(region1, region2) {
+    // Define the sets that each region represents
+    const sets = {
+      a: new Set(['a']),
+      b: new Set(['b']),
+      c: new Set(['c']),
+      ab: new Set(['a', 'b']),
+      bc: new Set(['b', 'c']),
+      ac: new Set(['a', 'c']),
+      abc: new Set(['a', 'b', 'c'])
+    };
+
+    // If either region doesn't exist, they can't be adjacent
+    if (!sets[region1] || !sets[region2]) return false;
+
+    // Get the sets for each region
+    const set1 = sets[region1];
+    const set2 = sets[region2];
+
+    // Check if one set is a subset of the other, or if they share elements
+    for (const item of set1) {
+      if (set2.has(item)) return true;
     }
+
     return false;
   }
 
@@ -218,7 +229,7 @@ class ChromaticVenn {
     ctx.lineWidth = 2;
     for (let i = 0; i < names.length; i++) {
       for (let j = i + 1; j < names.length; j++) {
-        if (this.areAdjacent(names[i], names[j], map)) {
+        if (this.areRegionsAdjacent(names[i], names[j])) {
           const p1 = pos[names[i]];
           const p2 = pos[names[j]];
           ctx.beginPath();
