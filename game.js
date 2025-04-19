@@ -1,4 +1,4 @@
-// game.js — FINAL VERSION with region center of mass + real-time adjacency graph
+// game.js — FINAL VERSION (UPDATED with accurate intersection-based graph edges)
 
 class ChromaticVenn {
   constructor() {
@@ -28,12 +28,10 @@ class ChromaticVenn {
   }
 
   setCanvasSizes() {
-    [this.vennCanvas, this.targetGraphCanvas, this.currentGraphCanvas].forEach(
-      (canvas) => {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-      }
-    );
+    [this.vennCanvas, this.targetGraphCanvas, this.currentGraphCanvas].forEach(canvas => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    });
   }
 
   createCircles() {
@@ -186,21 +184,14 @@ class ChromaticVenn {
   }
 
   areAdjacent(label1, label2, map) {
-    const set1 = new Set(label1);
-    const set2 = new Set(label2);
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
-
-    if (intersection.size >= 1 && (label1.length > 1 || label2.length > 1)) {
-      return true;
-    }
-
+    if (!map[label1] || !map[label2]) return false;
     const pts1 = map[label1];
     const pts2 = map[label2];
     for (const p1 of pts1) {
       for (const p2 of pts2) {
         const dx = p1.x - p2.x;
         const dy = p1.y - p2.y;
-        if (dx * dx + dy * dy <= 25) return true;
+        if (dx * dx + dy * dy <= this.gridStep * this.gridStep) return true;
       }
     }
     return false;
@@ -224,7 +215,6 @@ class ChromaticVenn {
 
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
-
     for (let i = 0; i < names.length; i++) {
       for (let j = i + 1; j < names.length; j++) {
         if (this.areAdjacent(names[i], names[j], map)) {
