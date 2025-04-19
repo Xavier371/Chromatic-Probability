@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Venn Diagram Game</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chromatic Probability</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="container">
-        <h1>Chromatic Probability</h1>
-        <div class="game-area">
-            <div class="left-side">
-                <canvas id="vennCanvas"></canvas>
-            </div>
-            <div class="right-side">
-                <canvas id="targetGraphCanvas"></canvas>
-                <canvas id="currentGraphCanvas"></canvas>
-            </div>
-        </div>
-        <div class="controls">
-            <button id="resetButton">Reset Game</button>
-            <div id="winMessage" class="win-message hidden">You won! Graphs match!</div>
-        </div>
+  <div class="container">
+    <h1>Chromatic Probability</h1>
+    <div class="game-area">
+      <div class="left-side">
+        <canvas id="vennCanvas"></canvas>
+      </div>
+      <div class="right-side">
+        <canvas id="targetGraphCanvas"></canvas>
+        <canvas id="currentGraphCanvas"></canvas>
+      </div>
     </div>
-    <script src="game.js"></script>
+    <div class="controls">
+      <button id="resetButton">Reset Game</button>
+      <label><input type="checkbox" id="debugToggle"> Show Debug</label>
+      <div id="winMessage" class="win-message hidden">You won! Graphs match!</div>
+    </div>
+  </div>
+  <script src="game.js"></script>
 </body>
 </html>
