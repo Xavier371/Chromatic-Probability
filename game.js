@@ -8,7 +8,7 @@ class ChromaticVenn {
     this.targetCtx = this.targetGraphCanvas.getContext("2d");
     this.currentCtx = this.currentGraphCanvas.getContext("2d");
 
-    this.gridStep = 5; // Back to original value for performance
+    this.gridStep = 5;
     this.circles = [];
     this.dragging = null;
     this.scaling = false;
@@ -181,9 +181,14 @@ class ChromaticVenn {
     };
   }
 
-  // This method directly defines adjacency based on set theory
+  // Correctly determine adjacency based on set relationships
   areRegionsAdjacent(region1, region2) {
-    // Define the sets that each region represents
+    // Special cases for complementary regions
+    if ((region1 === 'a' && region2 === 'bc') || (region1 === 'bc' && region2 === 'a')) return false;
+    if ((region1 === 'b' && region2 === 'ac') || (region1 === 'ac' && region2 === 'b')) return false;
+    if ((region1 === 'c' && region2 === 'ab') || (region1 === 'ab' && region2 === 'c')) return false;
+    
+    // For all other cases, check if they share elements
     const sets = {
       a: new Set(['a']),
       b: new Set(['b']),
@@ -193,19 +198,18 @@ class ChromaticVenn {
       ac: new Set(['a', 'c']),
       abc: new Set(['a', 'b', 'c'])
     };
-
+    
     // If either region doesn't exist, they can't be adjacent
     if (!sets[region1] || !sets[region2]) return false;
-
-    // Get the sets for each region
+    
+    // Check if they share at least one element
     const set1 = sets[region1];
     const set2 = sets[region2];
-
-    // Check if one set is a subset of the other, or if they share elements
+    
     for (const item of set1) {
       if (set2.has(item)) return true;
     }
-
+    
     return false;
   }
 
