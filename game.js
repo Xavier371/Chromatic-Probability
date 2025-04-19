@@ -1,4 +1,4 @@
-// game.js — Fully aligned with 'country and union' analogy + Four Color Theorem prep
+// game.js — Updated with strict region definitions + improved label centering
 
 class ChromaticVenn {
   constructor() {
@@ -156,31 +156,30 @@ class ChromaticVenn {
     );
   }
 
-  getRegionKey(inA, inB, inC) {
-    let key = "";
-    if (inA) key += "a";
-    if (inB) key += "b";
-    if (inC) key += "c";
-    return key;
-  }
-
   getRegionPoints() {
-    const labels = ["a", "b", "c", "ab", "bc", "ac", "abc"];
-    const map = Object.fromEntries(labels.map((l) => [l, []]));
+    const [A, B, C] = this.circles;
+    const regions = { a: [], b: [], c: [], ab: [], ac: [], bc: [], abc: [] };
+
     const w = this.vennCanvas.width;
     const h = this.vennCanvas.height;
     for (let x = 0; x < w; x += this.gridStep) {
       for (let y = 0; y < h; y += this.gridStep) {
         const p = { x, y };
-        const inA = this.pointIn(this.circles[0], p);
-        const inB = this.pointIn(this.circles[1], p);
-        const inC = this.pointIn(this.circles[2], p);
+        const inA = this.pointIn(A, p);
+        const inB = this.pointIn(B, p);
+        const inC = this.pointIn(C, p);
 
-        const key = this.getRegionKey(inA, inB, inC);
-        if (labels.includes(key)) map[key].push(p);
+        if (inA && !inB && !inC) regions.a.push(p);
+        else if (inB && !inA && !inC) regions.b.push(p);
+        else if (inC && !inA && !inB) regions.c.push(p);
+        else if (inA && inB && !inC) regions.ab.push(p);
+        else if (inA && inC && !inB) regions.ac.push(p);
+        else if (inB && inC && !inA) regions.bc.push(p);
+        else if (inA && inB && inC) regions.abc.push(p);
       }
     }
-    return map;
+
+    return regions;
   }
 
   drawGraph(ctx, regionMap, canvas) {
@@ -235,19 +234,16 @@ class ChromaticVenn {
   areRegionsAdjacent(r1, r2, regionMap) {
     const pts1 = regionMap[r1];
     const pts2 = regionMap[r2];
-    const labelCombo = [r1, r2].sort().join("");
+    const set1 = new Set(r1);
+    const set2 = new Set(r2);
 
-    if (["ab", "ac", "bc", "abc"].includes(r1) || ["ab", "ac", "bc", "abc"].includes(r2)) {
-      const set1 = new Set(r1);
-      const set2 = new Set(r2);
-      return [...set1].some((l) => set2.has(l));
-    }
+    if ([...set1].some((l) => set2.has(l))) return true;
 
     for (const p1 of pts1) {
       for (const p2 of pts2) {
         const dx = p1.x - p2.x;
         const dy = p1.y - p2.y;
-        if (dx * dx + dy * dy <= 25) return true;
+        if (dx * dx + dy * dy < 25) return true;
       }
     }
     return false;
@@ -269,12 +265,14 @@ class ChromaticVenn {
     const regionMap = this.getRegionPoints();
     for (const [label, pts] of Object.entries(regionMap)) {
       if (pts.length === 0) continue;
-      const center = pts.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }), {
-        x: 0,
-        y: 0,
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      pts.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
       });
-      center.x /= pts.length;
-      center.y /= pts.length;
+      const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
 
       this.ctx.fillStyle = "black";
       this.ctx.font = "bold 16px Arial";
