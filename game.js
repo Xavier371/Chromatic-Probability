@@ -1,5 +1,3 @@
-// game.js — FINAL VERSION (UPDATED with accurate intersection-based graph edges)
-
 class ChromaticVenn {
   constructor() {
     this.vennCanvas = document.getElementById("vennCanvas");
