@@ -1,4 +1,4 @@
-// game.js — Updated with strict region definitions + improved label centering
+// game.js — FINAL VERSION with region center of mass + real-time adjacency graph
 
 class ChromaticVenn {
   constructor() {
@@ -61,19 +61,14 @@ class ChromaticVenn {
 
   attachEvents() {
     const canvas = this.vennCanvas;
-
     canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
     canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
     canvas.addEventListener("mouseup", () => this.handleMouseUp());
     canvas.addEventListener("mouseleave", () => this.handleMouseUp());
-
     canvas.addEventListener("touchstart", (e) => this.handleTouchStart(e));
     canvas.addEventListener("touchmove", (e) => this.handleTouchMove(e));
     canvas.addEventListener("touchend", () => this.handleTouchEnd());
-
-    document
-      .getElementById("resetButton")
-      .addEventListener("click", () => this.resetGame());
+    document.getElementById("resetButton").addEventListener("click", () => this.resetGame());
     window.addEventListener("resize", () => {
       this.setCanvasSizes();
       this.draw();
@@ -119,7 +114,6 @@ class ChromaticVenn {
   handleMouseMove(e) {
     if (!this.dragging) return;
     const pos = this.getMousePos(e);
-
     if (this.scaling) {
       const dx = pos.x - this.dragging.x;
       const dy = pos.y - this.dragging.y;
@@ -151,17 +145,15 @@ class ChromaticVenn {
   }
 
   pointIn(circle, p) {
-    return (
-      (p.x - circle.x) ** 2 + (p.y - circle.y) ** 2 <= circle.r ** 2
-    );
+    return (p.x - circle.x) ** 2 + (p.y - circle.y) ** 2 <= circle.r ** 2;
   }
 
   getRegionPoints() {
     const [A, B, C] = this.circles;
-    const regions = { a: [], b: [], c: [], ab: [], ac: [], bc: [], abc: [] };
-
+    const regions = { a: [], b: [], c: [], ab: [], bc: [], ac: [], abc: [] };
     const w = this.vennCanvas.width;
     const h = this.vennCanvas.height;
+
     for (let x = 0; x < w; x += this.gridStep) {
       for (let y = 0; y < h; y += this.gridStep) {
         const p = { x, y };
@@ -178,20 +170,53 @@ class ChromaticVenn {
         else if (inA && inB && inC) regions.abc.push(p);
       }
     }
-
     return regions;
   }
 
-  drawGraph(ctx, regionMap, canvas) {
-    const regionNames = Object.keys(regionMap).filter((k) => regionMap[k].length > 0);
-    const positions = {};
+  getRegionCenter(points) {
+    const total = points.reduce((sum, p) => {
+      sum.x += p.x;
+      sum.y += p.y;
+      return sum;
+    }, { x: 0, y: 0 });
+    return {
+      x: total.x / points.length,
+      y: total.y / points.length
+    };
+  }
+
+  areAdjacent(label1, label2, map) {
+    const set1 = new Set(label1);
+    const set2 = new Set(label2);
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+
+    if (intersection.size >= 1 && (label1.length > 1 || label2.length > 1)) {
+      return true;
+    }
+
+    const pts1 = map[label1];
+    const pts2 = map[label2];
+    for (const p1 of pts1) {
+      for (const p2 of pts2) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        if (dx * dx + dy * dy <= 25) return true;
+      }
+    }
+    return false;
+  }
+
+  drawGraph(ctx, map, canvas) {
+    const regions = Object.entries(map).filter(([_, pts]) => pts.length > 0);
+    const names = regions.map(([label]) => label);
+    const pos = {};
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const radius = Math.min(cx, cy) * 0.7;
 
-    regionNames.forEach((label, i) => {
-      const angle = (i * 2 * Math.PI) / regionNames.length;
-      positions[label] = {
+    names.forEach((name, i) => {
+      const angle = (i * 2 * Math.PI) / names.length;
+      pos[name] = {
         x: cx + radius * Math.cos(angle),
         y: cy + radius * Math.sin(angle),
       };
@@ -200,13 +225,11 @@ class ChromaticVenn {
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
 
-    for (let i = 0; i < regionNames.length; i++) {
-      for (let j = i + 1; j < regionNames.length; j++) {
-        const a = regionNames[i];
-        const b = regionNames[j];
-        if (this.areRegionsAdjacent(a, b, regionMap)) {
-          const p1 = positions[a];
-          const p2 = positions[b];
+    for (let i = 0; i < names.length; i++) {
+      for (let j = i + 1; j < names.length; j++) {
+        if (this.areAdjacent(names[i], names[j], map)) {
+          const p1 = pos[names[i]];
+          const p2 = pos[names[j]];
           ctx.beginPath();
           ctx.moveTo(p1.x, p1.y);
           ctx.lineTo(p2.x, p2.y);
@@ -215,8 +238,8 @@ class ChromaticVenn {
       }
     }
 
-    regionNames.forEach((label) => {
-      const p = positions[label];
+    names.forEach((name) => {
+      const p = pos[name];
       ctx.beginPath();
       ctx.arc(p.x, p.y, 16, 0, 2 * Math.PI);
       ctx.fillStyle = "#1a73e8";
@@ -227,26 +250,8 @@ class ChromaticVenn {
       ctx.font = "bold 14px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, p.x, p.y);
+      ctx.fillText(name, p.x, p.y);
     });
-  }
-
-  areRegionsAdjacent(r1, r2, regionMap) {
-    const pts1 = regionMap[r1];
-    const pts2 = regionMap[r2];
-    const set1 = new Set(r1);
-    const set2 = new Set(r2);
-
-    if ([...set1].some((l) => set2.has(l))) return true;
-
-    for (const p1 of pts1) {
-      for (const p2 of pts2) {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
-        if (dx * dx + dy * dy < 25) return true;
-      }
-    }
-    return false;
   }
 
   draw() {
@@ -262,18 +267,10 @@ class ChromaticVenn {
       this.ctx.stroke();
     }
 
-    const regionMap = this.getRegionPoints();
-    for (const [label, pts] of Object.entries(regionMap)) {
+    const map = this.getRegionPoints();
+    for (const [label, pts] of Object.entries(map)) {
       if (pts.length === 0) continue;
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      pts.forEach(p => {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-      });
-      const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-
+      const center = this.getRegionCenter(pts);
       this.ctx.fillStyle = "black";
       this.ctx.font = "bold 16px Arial";
       this.ctx.textAlign = "center";
@@ -281,14 +278,14 @@ class ChromaticVenn {
       this.ctx.fillText(label, center.x, center.y);
     }
 
-    this.drawGraph(this.currentCtx, regionMap, this.currentGraphCanvas);
+    this.drawGraph(this.currentCtx, map, this.currentGraphCanvas);
     this.drawGraph(this.targetCtx, this.targetGraph, this.targetGraphCanvas);
-    this.checkWin(regionMap);
+    this.checkWin(map);
   }
 
   generateTargetGraph() {
-    const temp = this.circles.map((c) => ({ ...c }));
-    temp.forEach((c) => {
+    const temp = this.circles.map(c => ({ ...c }));
+    temp.forEach(c => {
       c.x += (Math.random() - 0.5) * 100;
       c.y += (Math.random() - 0.5) * 100;
     });
@@ -299,11 +296,11 @@ class ChromaticVenn {
   }
 
   checkWin(current) {
-    const currentKeys = Object.keys(current).filter((k) => current[k].length > 0).sort();
-    const targetKeys = Object.keys(this.targetGraph).filter((k) => this.targetGraph[k].length > 0).sort();
-    if (currentKeys.length !== targetKeys.length) return;
-    for (let i = 0; i < currentKeys.length; i++) {
-      if (currentKeys[i] !== targetKeys[i]) return;
+    const currentLabels = Object.keys(current).filter(k => current[k].length > 0).sort();
+    const targetLabels = Object.keys(this.targetGraph).filter(k => this.targetGraph[k].length > 0).sort();
+    if (currentLabels.length !== targetLabels.length) return;
+    for (let i = 0; i < currentLabels.length; i++) {
+      if (currentLabels[i] !== targetLabels[i]) return;
     }
     document.getElementById("winMessage").classList.remove("hidden");
   }
