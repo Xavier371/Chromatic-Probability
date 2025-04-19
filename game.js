@@ -182,16 +182,16 @@ class ChromaticVenn {
   }
 
   areAdjacent(label1, label2, map) {
-  if (!map[label1] || !map[label2]) return false;
-  const pts1 = map[label1];
-  const pts2 = map[label2];
-  for (const p1 of pts1) {
-    for (const p2 of pts2) {
-      if (p1.x === p2.x && p1.y === p2.y) return true;
+    if (!map[label1] || !map[label2]) return false;
+    const pts1 = map[label1];
+    const pts2 = map[label2];
+    for (const p1 of pts1) {
+      for (const p2 of pts2) {
+        if (p1.x === p2.x && p1.y === p2.y) return true;
+      }
     }
+    return false;
   }
-  return false;
-}
 
   drawGraph(ctx, map, canvas) {
     const regions = Object.entries(map).filter(([_, pts]) => pts.length > 0);
