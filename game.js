@@ -8,7 +8,7 @@ class ChromaticVenn {
     this.targetCtx = this.targetGraphCanvas.getContext("2d");
     this.currentCtx = this.currentGraphCanvas.getContext("2d");
 
-    this.gridStep = 5;
+    this.gridStep = 2; // Reduced for higher precision
     this.circles = [];
     this.dragging = null;
     this.scaling = false;
@@ -187,7 +187,12 @@ class ChromaticVenn {
     const pts2 = map[label2];
     for (const p1 of pts1) {
       for (const p2 of pts2) {
-        if (p1.x === p2.x && p1.y === p2.y) return true;
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        if (dx * dx + dy * dy <= this.gridStep * this.gridStep) {
+          console.log(`Adjacent: ${label1} and ${label2}`);
+          return true;
+        }
       }
     }
     return false;
