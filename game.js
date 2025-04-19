@@ -154,7 +154,7 @@ class ChromaticVenn {
     const regionLabels = ['a', 'b', 'c', 'ab', 'bc', 'ac', 'abc'];
     const regions = [];
 
-    const grid = this.generateGridPoints(10);
+    const grid = this.generateGridPoints(5);
     for (const point of grid) {
       const inA = this.pointInCircle(point, A);
       const inB = this.pointInCircle(point, B);
@@ -186,7 +186,7 @@ class ChromaticVenn {
       region.center = { x: sum.x / count, y: sum.y / count };
     });
 
-    return regions;
+    return regions.filter(r => r.points.length > 10);
   }
 
   generateGridPoints(step = 10) {
@@ -220,7 +220,7 @@ class ChromaticVenn {
       for (const p2 of r2.points) {
         const dx = p1.x - p2.x;
         const dy = p1.y - p2.y;
-        if (dx * dx + dy * dy < 100) return true;
+        if (dx * dx + dy * dy < 400) return true;
       }
     }
     return false;
